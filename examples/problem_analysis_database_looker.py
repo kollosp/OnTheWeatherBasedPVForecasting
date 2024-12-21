@@ -2,21 +2,14 @@ if __name__ == "__main__": import __config__
 import pandas as pd
 import numpy as np
 import os
-from datetime import date
-from matplotlib import pyplot as plt
-import matplotlib.dates as md
-from math import ceil, sqrt
-from datasets import utils
-from SEAIPPF.Model import Model as SEAIPPFModel
-from SEAIPPF.Transformers.TransformerTest import TransformerTest
-from SEAIPPF.Transformers.TransformerSimpleFiltering import TransformerSimpleFiltering
 
-from utils.Evaluate import Evaluate
+from matplotlib import pyplot as plt
+
+
+
 from utils.Plotter import Plotter
 from utils import Solar
-from sklearn.metrics import r2_score, mean_absolute_error
-from sklearn.linear_model import LinearRegression
-from sklearn.neural_network import MLPRegressor
+
 from sktimeSEAPF.Optimized import Optimized
 
 def print_full(x):
