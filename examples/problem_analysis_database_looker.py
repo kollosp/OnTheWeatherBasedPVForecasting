@@ -5,8 +5,6 @@ import os
 
 from matplotlib import pyplot as plt
 
-
-
 from utils.Plotter import Plotter
 from utils import Solar
 
@@ -32,6 +30,10 @@ if __name__ == "__main__":
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df.index = df['timestamp']
     df.drop(columns=["timestamp"], inplace=True)
+
+    print(df)
+    print(df.columns)
+
     # print_full(df[["0_Power"]].head(288))
     latitude_degrees = df["0_Latitude"][0]
     longitude_degrees = df["0_Longitude"][0]
@@ -46,7 +48,6 @@ if __name__ == "__main__":
     }, index = df.index)
     # print_full(df[["0_Power"]][288:].head(288))
     # print("First 288 rows")
-
 
     plotter = Plotter(df.index, [df[i] for i in [f"{j}_Power" for j in range(0,4)]] + [elevation], debug=False)
     plotter.show()
