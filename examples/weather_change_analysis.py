@@ -153,8 +153,6 @@ def plot_distances_over_time(distance_name, threshold, timestamps, distances, co
     plt.legend()
     plt.grid(True)
 
-
-
 def plot_daily_signals(distance_name, data1, data2, date, distance):
     plt.figure(figsize=(10, 4))
     plt.plot(data1, label="Day 1", color="blue")
@@ -186,4 +184,5 @@ if __name__ == "__main__":
                 compare_signals(csv_file_path, columnn, distance_name, distance_fn)
             except Exception as e:
                 print(f"Error for {distance_name}: {e}")
+
     plt.show()
