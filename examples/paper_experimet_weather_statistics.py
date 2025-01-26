@@ -7,6 +7,7 @@ from utils.Experimental import Experimental
 from WeatherWrapper.ACIWF import Model as ACIWF
 import pandas as pd
 from matplotlib import pyplot as plt
+from utils.ArticleUtils import print_or_save_figures, df_2_latex_str, join_dataframes
 WEATHER_CLASS = "\wc{}"
 DATASET = "\ds{}"
 
@@ -24,33 +25,35 @@ def ACICLASS_2_TEXT(c):
         "Snowy w."]
     return classes[c]
 
-def df_2_latex_str(df: pd.DataFrame, caption, command_name):
-    txt = "\\newcommand*\\" + command_name + "{" + df.to_latex(
-        caption=caption,
-        label=f"tab:{command_name}",
-        float_format="{:0.1f}".format,
-        na_rep="-"
-    ) + "}"
-    txt = txt.replace("\\begin{table}", "\\begin{table}\\centering\\small")
-    # return str(df)
-    return txt
 
-def plot_weather_classes_vs_energy_per_day(df):
-    fig, ax = plt.subplots(2)
-    fig.suptitle(f"Weather classes vs. mean power by day")
-    _ax = ax[1]
+
+
+def compute_aci_aggregated_df(df):
     df = df.groupby(pd.Grouper(freq='d')).agg({
         "data": "sum",
         "ACIWF.decision_final": "mean",
         "ACIWF.decision": "mean"
     })
-    df["ACIWF.decision_final"] = df["ACIWF.decision_final"].astype(int)
+
+    # print(df["ACIWF.decision_final"]["2021-05-26":"2021-06-03"].tolist())
+    df["ACIWF.decision_final"] = df["ACIWF.decision_final"].round(0).astype(int)
     df["data"] = df["data"] / 12
+    return df
+
+def plot_weather_classes_vs_energy_per_day(df, pv_instance):
+
+    fig, ax = plt.subplots(3)
+    fig.suptitle(f"Weather classes and mean daily power by day for PV {pv_instance}")
+
+    df = compute_aci_aggregated_df(df)
+    _ax = ax[-1]
+    _ax.tick_params(axis='x', labelrotation=30)
+
     _ax.bar(df.index, df["data"], label="Production by day")
     _ax.set_ylabel("Production [kWh]")
     _ax.set_xlabel("Time")
     _ax.legend()
-
+    unique = np.unique(df["ACIWF.decision_final"].values)
     bar_labels_clear = [ACICLASS_2_TEXT(k) for k in df["ACIWF.decision_final"]]
     bar_labels = [ACICLASS_2_TEXT(k) for k in df["ACIWF.decision_final"]]
     found = []
@@ -63,14 +66,29 @@ def plot_weather_classes_vs_energy_per_day(df):
     colors = ['tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink']
     bar_color = [colors[int(k % len(colors))] for k in df["ACIWF.decision_final"]]
 
+
+    for i in range(0, len(unique)-1):
+        ax[0].plot(df.index, [i+0.5] * len(df), "k--")
+        ax[1].plot(df.index, [i+0.5] * len(df), "k--")
+
     _ax = ax[0]
+    _ax.set_xticklabels([])
     _ax.set_ylabel("ACI")
-    _ax.bar(df.index, df["ACIWF.decision_final"], label = bar_labels, color=bar_color)
+    _ax.bar(df.index, df["ACIWF.decision"], label = bar_labels, color=bar_color)
+    #
+
+    _ax = ax[1]
+    _ax.set_xticklabels([])
+    _ax.set_ylabel("ACI")
+    for i, wc in enumerate(unique):
+        d = np.where(df["ACIWF.decision_final"] != wc, np.nan, df["ACIWF.decision"].values)
+        _ax.plot(df.index, d, label=ACICLASS_2_TEXT(wc), color=colors[i])
+        _ax.scatter(df.index, d, color=colors[i], marker=".")
+
     _ax.legend(title='ACI class label')
-    fig.show()
     longest_uninterrupted = {}
     next_classes = {}
-    unique = np.unique(df["ACIWF.decision_final"].values)
+
     for wc in unique:
         # d = df["ACIWF"].values
         d = np.where(df["ACIWF.decision_final"].values == wc, 1, 0)
@@ -108,12 +126,11 @@ def plot_weather_classes_vs_energy_per_day(df):
     stats.columns = stats.columns.droplevel()
     stats["share [\%]"] = 100 * stats["count"] // sum(stats["count"])
 
-    # print("=============================================")
+    figs = [fig]
+    dfs = [stats_nexts, stats_longest_uni, stats]
+    return dfs, figs
 
-    #
-    return stats_nexts, stats_longest_uni, stats
-
-def generate_data(pv_instance):
+def generate_data(pv_instance) -> pd.DataFrame:
     file_path = "/".join(os.path.abspath(__file__).split("/")[:-2] + ["datasets/dataset.csv"])
     df = pd.read_csv(file_path, low_memory=False)
     df.rename(columns={'Unnamed: 0': 'timestamp'}, inplace=True)
@@ -140,20 +157,23 @@ def generate_data(pv_instance):
         learning_window_length=288 * 180,
         window_size=288,
         batch=288 * 360,
-        # early_stop=288 * 20,
+        # early_stop=288 * 360,
         enable_description=True
     )
-    pred = ex.predictions[["data", "ACIWF.decision_final", "ACIWF.decision", "ACIWF.ACI(k=3)"]]
+    print("columns: ", ex.predictions.columns)
+    pred = ex.predictions[["data", "ACIWF.decision_final", "ACIWF.decision", "ACIWF.ACI(3)"]]
 
     pred = pred.dropna()
+
     # plotter = ex.plot(include_columns=["data", "ACIWF", "ACIWF.decision_final", "ACIWF.ACI(3)", "ACIWF.OCI.expected_from_model", "ACIWF.decision"])
     # plotter.show()
     # plt.show()
     return pred
 
-def main(pv_instance=0, persist_file="cm/paper_experiment_aci"):
+def generate_or_load_aci(pv_instance=0, persist_file="cm/paper_experiment_aci", enable_load=True) -> pd.DataFrame:
+    plotter = None
     file_path = persist_file + f".{pv_instance}.csv"
-    if os.path.exists(file_path):
+    if os.path.exists(file_path) and enable_load:
         pred = pd.read_csv(file_path, header=0)
         pred['timestamp'] = pd.to_datetime(pred['timestamp'])
         pred.index = pred['timestamp']
@@ -162,31 +182,35 @@ def main(pv_instance=0, persist_file="cm/paper_experiment_aci"):
         pred = generate_data(pv_instance)
         pred.to_csv(file_path)
 
-    return plot_weather_classes_vs_energy_per_day(pred)
+    return pred
 
-def join_dataframes(dfs, indexes=None):
-    ret = [pd.DataFrame()] * len(dfs[0])
+def main(pv_instances):
+    all_dfs = []
+    indexes = []
+    all_figures = []
+    for pv_instance in pv_instances:
+        pred = generate_or_load_aci(pv_instance=pv_instance, enable_load=True)
+        dfs, figs_all_data  = plot_weather_classes_vs_energy_per_day(pred, pv_instance)
+        _, figs_one_year = plot_weather_classes_vs_energy_per_day(pred[:pred.index[0] + pd.DateOffset(365)], pv_instance)
+        all_figures = all_figures + figs_all_data + figs_one_year
 
-    for df, indx in zip(dfs, indexes):
-        for i, d in enumerate(df):
-            d.index = pd.MultiIndex.from_product([[indx], d.index], names=[DATASET, WEATHER_CLASS])
-            ret[i] = pd.concat([ret[i],d])
+        indexes.append(f"PV {pv_instance}")
+        all_dfs.append(dfs)
 
-    return ret
+    stats_nexts, stats_longest_uni, stats = join_dataframes(all_dfs, indexes, [DATASET, WEATHER_CLASS])
+    txt = df_2_latex_str(stats_nexts, caption=f"{WEATHER_CLASS} changes structure in percent [\%]",
+                         command_name="WeatherChangesStructure")
+    txt += df_2_latex_str(stats_longest_uni,
+                         caption=f"Uninterrupted {WEATHER_CLASS} chain length statistics by {WEATHER_CLASS}",
+                         command_name="LongestUninterrupted")
+    txt += df_2_latex_str(stats, caption=f"Power production statistics by {WEATHER_CLASS} ",
+                         command_name="PowerProductionStats")
+    with open("cm/paper_experiment_aci.tex", "w") as f:
+        f.write(txt)
+    print_or_save_figures(figures=all_figures, path="cm/paper_experiment_aci.pdf")
+
 
 if __name__ == "__main__":
     pv_instances = [0,1,2]
-    dfs = []
-    indexes = []
-    for pv_instance in pv_instances:
-        ret = main(pv_instance=pv_instance)
-        indexes.append(f"PV {pv_instance}")
-        dfs.append(ret)
-
-    stats_nexts, stats_longest_uni, stats = join_dataframes(dfs,indexes)
-
-    print(df_2_latex_str(stats_nexts, caption=f"{WEATHER_CLASS} changes structure in percent [\%]", command_name="WeatherChangesStructure"))
-    print(df_2_latex_str(stats_longest_uni,  caption=f"Uninterrupted {WEATHER_CLASS} chain length statistics by {WEATHER_CLASS}", command_name="LongestUninterrupted"))
-    print(df_2_latex_str(stats, caption=f"Power production statistics by {WEATHER_CLASS} ", command_name="PowerProductionStats"))
-
+    main(pv_instances)
     plt.show()

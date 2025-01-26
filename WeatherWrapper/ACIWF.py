@@ -36,6 +36,7 @@ class Model(BaseForecaster):
         self.oci_window_size = oci_window_size
         self.weather_aggregation_method = weather_aggregation_method
 
+
     def compute_weather_features(self, data:pd.Series) -> pd.Series:
         """
         Function computes all weather features

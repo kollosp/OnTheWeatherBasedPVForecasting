@@ -14,12 +14,17 @@ class Model(BaseForecaster):
     }
 
     def __init__(self, N=3):
+        """
+        Creates N last periods model
+        :param N: number of periods used in aggregation
+        """
         super().__init__()
         self.N = int(N)
 
     def _fit(self, y, X=None, fh=None):
         self.x_time_delta_ = (y.index[-1] - y.index[0]) / len(y)
         self.y_max_ = max(y.values)
+        self.y_ = y
 
     def _predict(self, fh, X):
         # if not any(type(t) == pd._libs.tslibs.timestamps.Timestamp for t in fh):
@@ -29,7 +34,11 @@ class Model(BaseForecaster):
         return self.in_sample_predict(X,fh)
 
     def in_sample_predict(self, X, fh):
-        x = X.iloc[:, 0]
+        if X is None:
+            x = self.y_
+        else:
+            x = X.iloc[:, 0]
+
         with warnings.catch_warnings():
             warnings.simplefilter(action='ignore', category=UserWarning)
             prediction = np.zeros(len(fh))

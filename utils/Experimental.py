@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import List, Callable, Iterable, Any
+from typing import List, Callable, Iterable, Any, Tuple
 from sktime.forecasting.model_selection import SlidingWindowSplitter
 
 
@@ -38,6 +38,9 @@ class Experimental:
     @property
     def models(self):
         return self._models
+    @property
+    def model_names(self):
+        return [str(model) for model in self._models]
 
     @property
     def metrics(self):
@@ -69,7 +72,13 @@ class Experimental:
         for metric in metrics:
             self._metrics.append(Metric(metric[0], metric[1]))
 
-    def predict(self, forecast_horizon = 288, batch = 288, learning_window_length = 288 * 30, window_size=288, early_stop=None, enable_description=False):
+    def predict(self,
+                forecast_horizon = 288,
+                batch = 288,
+                learning_window_length = 288 * 30,
+                window_size=288,
+                early_stop=None,
+                enable_description=False) -> Tuple:
         """
         Function performs train/test loop.
         :param forecast_horizon: number of samples in prediction. Relative to end of the learning data.
@@ -83,7 +92,7 @@ class Experimental:
                                    given to the model during predict(.., X). Those parametes are stored in form of
                                    List[pd.DataFrame] for each registered model in self._prediction_descriptions and can be read using property
                                    self.prediction_descriptions
-        :return:
+        :return: predictions, metrics_results, forecast_start_point
         """
         fh = list(range(forecast_horizon))
         cv = SlidingWindowSplitter(window_length=learning_window_length, fh=fh, step_length=len(fh))
@@ -103,7 +112,7 @@ class Experimental:
             # fit models once per batch
             if i % batch == 0:
                 for model in self._models:
-                    model.fit(y=self._dataset[train])
+                    model.fit(y=self._dataset[train][:-1])
 
             # print("Train & Test", train, len(test), test[0], test[-1])
 
@@ -114,9 +123,11 @@ class Experimental:
                 # self._dataset[test].index -> prediction timestamps len(test) == forecast_horizon
                 # self._dataset[train[-window_size:] -> last window_size samples self._dataset[-1].index == self._dataset[test][0]-1
                 # those two sets are adjusted but do not overlap
-                x= self._dataset[train[-window_size:]]
-                # print("X=", x.index[[0,-1]], x)
-                prediction = model.predict(fh=self._dataset[test].index, X=x)
+                if batch != 1: # if batch is disabled model should remember input from fit
+                    x= self._dataset[train[-window_size:]]
+                    prediction = model.predict(fh=self._dataset[test].index, X=x)
+                else:
+                    prediction = model.predict(fh=self._dataset[test].index)
                 # prediction is a pandas.series contains len(test) instances
                 predictions[j][s:s + len(prediction)] = prediction
 
