@@ -36,10 +36,13 @@ class Model(BaseForecaster):
                  density_filter_modifier:float=0,
                  interpolation=False,
                  return_sequences = False,
-                 str_representation_limit = -1
+                 str_representation_limit = -1,
+                 str_repr_enable_params=False
                  ):
 
         super().__init__()
+        self.model_name = "SEAPF"
+        self.str_repr_enable_params = str_repr_enable_params
         self.zeros_filter_modifier = zeros_filter_modifier
         self.density_filter_modifier = density_filter_modifier
         self.x_bins = x_bins
@@ -57,6 +60,16 @@ class Model(BaseForecaster):
         self.enable_debug_params = enable_debug_params
         self.window_size = window_size  # if set then fit function performs moving avreage on the input data
         self.str_representation_limit = str_representation_limit
+
+
+    @property
+    def name(self):
+        return self.model_name
+
+    @property
+    def model_representation(self):
+
+        return self.model_representation_
 
     @property
     def str_limit(self):
@@ -87,10 +100,13 @@ class Model(BaseForecaster):
         self._fit_y_adjustment(y, X, fh, self.y_adjustment_obs)
 
 
-        self.overlay_ = self.overlay_.apply_zeros_filter(modifier=self.zeros_filter_modifier)\
-            .apply_density_based_filter(modifier=self.density_filter_modifier)
+        if self.zeros_filter_modifier > 0:
+            self.overlay_ = self.overlay_.apply_zeros_filter(modifier=self.zeros_filter_modifier)
+        if self.density_filter_modifier > 0:
+            self.overlay_ = self.overlay_.apply_density_based_filter(modifier=self.density_filter_modifier)
 
         self.model_representation_ = np.apply_along_axis(lambda a: self.overlay_.bins[np.argmax(a)], 0, self.overlay_.kde).flatten()
+        self.model_representation_ = Optimized.window_moving_avg(self.model_representation_ , window_size=3, roll=True)
         # print(self.model _representation_)
         return self
 
@@ -103,13 +119,6 @@ class Model(BaseForecaster):
         ).fit(X=y_adjustment_obs[:,1:], y=y_adjustment_obs[:,0])
         self._y_adjustment_coef_ = 0# self._y_adjustment_reg_.coef_[0]
         self._y_adjustment_intercept_ = 0#self._y_adjustment_reg_.intercept_
-
-        #linear regression
-        # self._y_adjustment_reg_ = LinearRegression().fit(X=y_adjustment_obs[:,1:], y=y_adjustment_obs[:,0])
-        # self._y_adjustment_reg_ = LinearRegression().fit(X=y_adjustment_obs[:,1:], y=y_adjustment_obs[:,0])
-        # self._y_adjustment_coef_ = self._y_adjustment_reg_.coef_[0]
-        # self._y_adjustment_intercept_ = self._y_adjustment_reg_.intercept_
-        # print("_fit_y_adjustment", reg.coef_,  reg.intercept_)
 
     def _fit_compute_statistics(self, y, X=None, fh=None):
         self.max_seen_ = max(y)
@@ -250,10 +259,13 @@ class Model(BaseForecaster):
 
         return fig, ax
 
-    def plot(self, plots=["overlay", "model", "y_adjustment"]):
+    def plot(self, plots=["overlay", "model", "y_adjustment"], prefix=""):
         plots = [p.lower() for p in plots]
         fig, ax = plt.subplots(4)
-
+        if prefix != "":
+            fig.suptitle(f"{prefix}:{self.model_name}")
+        else:
+            fig.suptitle(f"{self.model_name}")
         ov = self.overlay_.overlay
 
         Plotter.plot_overlay(ov, fig=fig, ax=ax[0])
@@ -370,8 +382,10 @@ class Model(BaseForecaster):
         #     " len(" + str(len(self.model_representation_)) + ")" + \
         #     "\nBins: " + str(self.elevation_bins_) + " len(" + str(len(self.elevation_bins_)) + ")"
         limit = self.str_limit
-        s = "SEAPF (" + str(self.get_params()) + ")"
-        if len(s) > 15 or limit == -1:
+        s = self.model_name
+        if self.str_repr_enable_params:
+            s = s + " (" + str(self.get_params()) + ")"
+        if len(s) > limit and limit != -1:
             return s[0:limit//2] + "..." + s[-limit//2:]
         else:
             return s

@@ -78,7 +78,8 @@ class Model(SEAPF):
         if self.transformer is not None:
             kde = self.transformer.fit(kde).transform(kde)
         else:
-            print("SEAIPPF model: self.transformer should not be None. Pass one of available transformers to constructor")
+            # print("SEAIPPF model: self.transformer should not be None. Pass one of available transformers to constructor")
+            pass
 
 
         self.model_representation_ = np.apply_along_axis(lambda a: self.overlay_.bins[np.argmax(a)], 0, kde).flatten()
@@ -100,4 +101,5 @@ class Model(SEAPF):
 
     def plot(self, plots=["overlay", "model", "y_adjustment"]):
         super(Model, self).plot()
-        return self.transformer.plot()
+        if self.transformer is not None:
+            self.transformer.plot()

@@ -30,7 +30,8 @@ class TestModel(unittest.TestCase):
         self.longitude_degrees = 14
         self.latitude_degrees = 51
 
-        shift = 267
+        # shift = 267
+        shift = 155
         train_days = 80 * 288
         test_days = 360 * 288
         self.elevation_bins = 90

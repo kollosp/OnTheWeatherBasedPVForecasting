@@ -1,3 +1,4 @@
+import math
 import os
 from typing import Tuple
 
@@ -216,7 +217,9 @@ class AngleClassifier(BaseEstimator):
         self.param = param
 
     def polar_angle(self, x,y):
-        return np.arctan(y/x)
+        # [-pi/2, pi/2]
+        print(x,y, "=", y/x, np.arctan(y/x))
+        return 2*np.arctan(y/x) / np.pi
 
     def fit(self, X, y=None):
         self.is_fitted_ = True
@@ -228,14 +231,44 @@ class AngleClassifier(BaseEstimator):
 
         temp = np.array([[c, centroid] for c, centroid in zip(self.classes_, self.centroids_polar_angle_)])
         self.centroids_polar_angle_ = temp[temp[:, 1].argsort()]
-        self.boundaries_polar_angle_ = self.centroids_polar_angle_
-        # self.polar_angle_boundaries = [ for c1,c2 in zip(self.centroids_polar_angle_[1:],self.centroids_polar_angle_[:-1])]
-        print("centroids:", self.centroids_, "polar[angle, class]\n", self.centroids_polar_angle_)
+        # self.boundaries_polar_angle_ = self.centroids_polar_angle_
+        self.boundaries_polar_angle_ = [ (c1 + c2) / 2 for c1,c2 in zip(self.centroids_polar_angle_[1:,1],self.centroids_polar_angle_[:-1,1])]
+        print("centroids:", self.centroids_, "polar[class, angle]\n", self.centroids_polar_angle_)
+        print("boundaries_polar_angle_\n", self.boundaries_polar_angle_)
         return self
 
     def predict(self, X):
         polar_angles = [self.polar_angle(x,y) for x,y in X]
-        return np.full(shape=X.shape[0], fill_value=self.param)
+        r = []
+        for pa in polar_angles:
+            met = False
+            for i,b in enumerate(self.boundaries_polar_angle_):
+                # print(pa, b)
+                if pa < b:
+                    met = True
+                    r.append(self.centroids_polar_angle_[i,0])
+                    break
+
+            if not met:
+                r.append(self.centroids_polar_angle_[-1,0])
+
+        return np.full(shape=X.shape[0], fill_value=r)
+
+class AngleRegressor(BaseEstimator):
+    def __init__(self, *, param=1):
+        self.param = param
+
+    def polar_angle(self, x,y):
+        return 100* (np.arctan(y/x) + np.pi/2) / np.pi
+
+    def fit(self, X, y=None):
+        return self
+
+    def predict(self, X):
+        # returns polar angle for any received data
+        return np.full(shape=X.shape[0], fill_value=[
+            self.polar_angle(x,y) for x,y in X
+        ])
 
 def plot_mesh(ax, estimator: BaseEstimator, title: str, mesh_shape: Tuple[int, int], df: pd.DataFrame, x_column:str, y_column:str, hue_column:str):
     """Function plots decision boundaries for selected (created already) estimator on a selected axis (ax) """
@@ -250,12 +283,22 @@ def plot_mesh(ax, estimator: BaseEstimator, title: str, mesh_shape: Tuple[int, i
     ax.pcolormesh(x_space, y_space, Z)
     ax.set_title(title)
 
-def show_kde(df, x_column, y_column, hue_column):
+def show_kde(df, x_column, y_column, hue_column, estimators = [
+        # (KNeighborsClassifier(1, weights='distance'), "KNN(1)"),
+        # (KNeighborsClassifier(4, weights='distance'), "KNN(4)"),
+        # (DecisionTreeClassifier(max_depth=100), "DT(100)"),
+        # (RandomForestClassifier(max_depth=20), "RF(20)"), # the best model that was found during investigation for ICDM'24
+        (AngleClassifier(), "A(3)"), # it requires hyper-parametrisation
+        (make_pipeline(StandardScaler(), SVC(gamma='auto', C=12)), "SVM(C=12)"), # it requires hyper-parametrisation
+        (make_pipeline(StandardScaler(), SVC(gamma='auto', C=1)), "SVM(C=1)"), # it requires hyper-parametrisation
+        (make_pipeline(StandardScaler(), SVC(gamma='auto', C=0.1)), "SVM(C=0.1)"), # it requires hyper-parametrisation
+        (make_pipeline(StandardScaler(), SVC(gamma='auto', C=0.01)), "SVM(C=0.01)"), # it requires hyper-parametrisation
+    ]):
     """Function creates a plot that is consists of several plots:
         - 1D kde for OCI
         - 1D kde for VCI
          and 2D kde for both. """
-    fig, ax = plt.subplots(6,2)
+    fig, ax = plt.subplots(2 + math.ceil(len(estimators) / 2),2)
     sns.set_theme(style="ticks")
     df = df[[x_column, y_column, hue_column]].dropna()
     hue_classes = sorted(df[hue_column].unique())
@@ -315,17 +358,7 @@ def show_kde(df, x_column, y_column, hue_column):
     _ax.set_ylim([y_min, y_max])
 
     mesh_axs = ax[2:,:].flatten()
-    estimators = [
-        # (KNeighborsClassifier(1, weights='distance'), "KNN(1)"),
-        # (KNeighborsClassifier(4, weights='distance'), "KNN(4)"),
-        # (DecisionTreeClassifier(max_depth=100), "DT(100)"),
-        (RandomForestClassifier(max_depth=20), "RF(20)"), # the best model that was found during investigation for ICDM'24
-        (AngleClassifier(), "A(3)"), # it requires hyper-parametrisation
-        (make_pipeline(StandardScaler(), SVC(gamma='auto', C=12)), "SVM(C=12)"), # it requires hyper-parametrisation
-        (make_pipeline(StandardScaler(), SVC(gamma='auto', C=1)), "SVM(C=1)"), # it requires hyper-parametrisation
-        (make_pipeline(StandardScaler(), SVC(gamma='auto', C=0.1)), "SVM(C=0.1)"), # it requires hyper-parametrisation
-        (make_pipeline(StandardScaler(), SVC(gamma='auto', C=0.01)), "SVM(C=0.01)"), # it requires hyper-parametrisation
-    ]
+
 
     for _ax, estimator in zip(mesh_axs, estimators):
         plot_mesh(_ax, estimator[0], estimator[1], (100,100), df, x_column, y_column, hue_column)

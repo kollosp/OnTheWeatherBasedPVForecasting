@@ -24,7 +24,7 @@ class Model(basemodel):
                  y_bins: int = 10,
                  bandwidth: float = 0.4,
                  window_size: int = None,
-                 y_adjustment: bool = False,
+                 y_adjustment: bool = True,
                  enable_debug_params: bool = True,
                  zeros_filter_modifier:float=0,
                  density_filter_modifier:float=0,
@@ -47,6 +47,7 @@ class Model(basemodel):
             return_sequences = return_sequences,
             str_representation_limit = str_representation_limit,
         )
+        self.model_name = "SEAPFv2"
 
         self.y_adjustment = y_adjustment
 
@@ -78,15 +79,20 @@ class Model(basemodel):
         return np.array([self.get_model_value(x,xfa,xfb,yf) for x,xfa,xfb,yf in zip(x,xfactor_a, xfactor_b,yfactor)])
 
     def _predict(self, fh, X):
+        #
+        # if not any(type(t) == pd._libs.tslibs.timestamps.Timestamp for t in fh):
+        #     ts = np.array([i*self.x_time_delta_ + self.cutoff for i in fh]).flatten()
+        # else:
+        #     ts = fh.to_numpy()
+        return self.in_sample_predict(X,fh)
 
-        if not any(type(t) == pd._libs.tslibs.timestamps.Timestamp for t in fh):
-            ts = np.array([i*self.x_time_delta_ + self.cutoff for i in fh]).flatten()
-        else:
-            ts = fh.to_numpy()
-        return self.in_sample_predict(X,ts)
 
-    def in_sample_predict(self, X, ts):
-        timestamps = (ts.astype(int) // 10 ** 9).astype(int)
+    def in_sample_predict(self, X, fh=None, ts=None):
+        # depending of usege eitherfh or ts may be passed to the object
+        if fh is not None:
+            ts = fh.to_pandas()
+
+        timestamps = ts.astype('datetime64[s]').astype('int') #(ts.astype(int) // 10 ** 9).astype(int)
         elevation = Solar.elevation(Optimized.from_timestamps(timestamps), self.latitude_degrees,
                                     self.longitude_degrees) * 180 / np.pi
 
@@ -107,7 +113,7 @@ class Model(basemodel):
         sunset = Solar.sunset_timestamp(timestamps, self.latitude_degrees)
         lst = Solar.lst_timestamp(timestamps, self.longitude_degrees)
         #day_progress =
-        day_len = (sunset - sunrise) * 60 * 60 / self.x_time_delta_.total_seconds()  # in number of samples
+        #day_len = (sunset - sunrise) * 60 * 60 / self.x_time_delta_.total_seconds()  # in number of samples
         day_progress_factor = (lst-sunrise) / (sunset - sunrise) # day_progress / day_len
 
         # print({"sunset": sunset, "timestamps": timestamps})
@@ -140,9 +146,9 @@ class Model(basemodel):
             "day_progress": 100 * day_progress_factor,
             "prediction": prediction,
             "base_prediction": self.get_model_values(day_progress_factor)
-        }, index=pd.DatetimeIndex(ts), dtype=float)
+        }, index=ts, dtype=float)
 
-        pred = pd.Series(index=pd.DatetimeIndex(ts), data=prediction, dtype=float)
+        pred = pd.Series(index=ts, data=prediction, dtype=float)
         pred.iloc[self.debug_data_["Elevation"] < 0] = 0
         pred.name = "Prediction"
         pred.index.name = "Datetime"
@@ -151,14 +157,3 @@ class Model(basemodel):
         self.debug_data_["Elevation"].iloc[self.debug_data_["Elevation"] < 0] = 0
 
         return pred
-
-    def __str__(self):
-        # return "Model representation: " + str(self.model_representation_) + \
-        #     " len(" + str(len(self.model_representation_)) + ")" + \
-        #     "\nBins: " + str(self.elevation_bins_) + " len(" + str(len(self.elevation_bins_)) + ")"
-        limit = self.str_limit
-        s = "SEAPFv2 (" + str(self.get_params()) + ")"
-        if len(s) > 38  or limit == -1:
-            return s[0:limit//2] + "..." + s[-limit//2:]
-        else:
-            return s

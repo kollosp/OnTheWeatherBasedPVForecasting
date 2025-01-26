@@ -35,11 +35,13 @@ class Plotter:
     Class for interactive plotting. It alows to move over the data
     """
     def __init__(self, x_axis:List | np.ndarray, list_of_data_or_plotter_object:List[np.ndarray | PlotterObject],
+                 list_of_line_names: List[str] | None = None,
                  displayed_window_size:int = 1_000,
                  one_time_jump: int = 300,
                  debug:bool=False):
         self._list_of_data = list_of_data_or_plotter_object
         self._x_axis = x_axis
+        self._list_of_line_names = list_of_line_names
         self._current_position = 0
         self._one_time_jump = one_time_jump
         self._displayed_window_size = displayed_window_size
@@ -98,7 +100,7 @@ class Plotter:
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
 
-    def show(self) -> self:
+    def show(self):
         self._fig, self._ax = plt.subplots(1)
 
         myFmt = mdates.DateFormatter('%H:%M %d-%m-%y')
@@ -111,7 +113,9 @@ class Plotter:
             y = self.get_window(d) #  get window that should be displayed (a part of timeseries)
             pl, = self._ax[0].plot(x, y)  # display the window
             self._plots.append(pl)  # save plot object. It is necessary to update it
-        self._ax[0].legend(self._plots, [p.get_label() for p in self._plots])
+        if self._list_of_line_names is not None:
+            print(self._plots, self._list_of_line_names )
+            self._ax[0].legend(self._plots, [p for p in self._list_of_line_names])
         self._fig.canvas.mpl_connect('key_press_event', self.on_click) # update data on press
         self._fig.canvas.mpl_connect('key_release_event', self.on_release) #repaint on release
         return self

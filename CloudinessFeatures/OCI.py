@@ -25,7 +25,7 @@ class Model(BaseForecaster):
         return self
 
     def expected_from_model(self, ts):
-        return self.model_instance_.in_sample_predict(ts=ts.index, X=None)
+        return self.model_instance_.in_sample_predict(ts=ts, X=None)
 
     def transform(self, ts):
         model_data = self.expected_from_model(ts)
