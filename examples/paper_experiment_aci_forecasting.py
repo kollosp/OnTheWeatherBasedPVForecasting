@@ -9,7 +9,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from utils.ArticleUtils import print_or_save_figures, df_2_latex_str, join_dataframes
 from paper_experimet_weather_statistics import compute_aci_aggregated_df, generate_or_load_aci
-from NLastPeriods.Model import Model as NLastPeriods
+from RollingAverage.Model import Model as RollingAverage
 WEATHER_CLASS = "\wc{}"
 DATASET = "\ds{}"
 from sktime.forecasting.exp_smoothing import ExponentialSmoothing
@@ -35,23 +35,23 @@ def ACICLASS_2_TEXT(c):
 
 def main_instance(pv_instance, y,X):
     fig, ax = plt.subplots(2)
-    fig.suptitle(f"WC forecasting for PV {pv_instance}")
+    # fig.suptitle(f"WC forecasting for PV {pv_instance}")
     ax[0].plot(y.index, y.values)
     ax[1].plot(X.index, X.values)
 
     ex = Experimental()
     ex.register_dataset(X)
-    ex.register_model(NLastPeriods(N=1))
-    ex.register_model(NLastPeriods(N=3))
-    ex.register_model(ExponentialSmoothing())
     ex.register_model(NaiveForecaster(strategy="last"))
-    # ex.register_model(make_reduction(MLPRegressor()))
+    ex.register_model(RollingAverage(N=3))
+    ex.register_model(RollingAverage(N=30))
+    ex.register_model(ExponentialSmoothing())
+    # ex.register_model(make_reduction(MLPRegressor(hidden_layer_sizes=(10,10,10))))
     # ex.register_model(make_reduction(MLPRegressor(hidden_layer_sizes=(10,5,3))))
-
+    k = 3
     pred, metrics, forecast_start_point = ex.predict(
         forecast_horizon = 1,
         batch = 1,
-        learning_window_length = 300,
+        learning_window_length = 360,
         window_size=30,
         # early_stop=30,
         enable_description=False)
@@ -59,7 +59,10 @@ def main_instance(pv_instance, y,X):
     pred = pred[prediction_columns]
 
     for c in pred.columns:
-        pred["WC_" + c] = pred[c].round(0)
+        decision_boundary = (k-1) / k
+        pred["WC_" + c] = pred[c] // decision_boundary
+        pred["WC_" + c][pred["WC_" + c] == k] = k-1
+
         ax[0].plot(y.index, [np.nan] * forecast_start_point + pred["WC_" + c].tolist(), label=c)
         ax[1].plot(X.index, [np.nan] * forecast_start_point + pred[c].tolist())
     _ax = ax[0]
@@ -78,10 +81,10 @@ def main_instance(pv_instance, y,X):
     for wc_column in wc_columns:
         metrics = []
         metrics.append(accuracy_score(y,pred[wc_column]))
-        metrics.append(balanced_accuracy_score(y,pred[wc_column]))
+        # metrics.append(balanced_accuracy_score(y,pred[wc_column]))
         ret[wc_column[3:]] = metrics
 
-    df = pd.DataFrame.from_dict(ret, orient='index', columns=["accuracy", "balanced accuracy"])
+    df = pd.DataFrame.from_dict(ret, orient='index', columns=["accuracy"])
     df.index.rename("Model", inplace=True)
     df.columns.rename("Metric", inplace=True)
     return [df], [fig]
@@ -91,7 +94,7 @@ def main(pv_instances):
     indexes = []
     all_figures = []
     for pv_instance in pv_instances:
-        pred = generate_or_load_aci(pv_instance=pv_instance, enable_load=True)
+        pred, latitude_degrees, longitude_degrees  = generate_or_load_aci(pv_instance=pv_instance, enable_load=True)
         pred = compute_aci_aggregated_df(pred)
         y = pred["ACIWF.decision_final"]
         X = pred["ACIWF.decision"]
@@ -103,7 +106,6 @@ def main(pv_instances):
 
 
     pred = join_dataframes(all_dfs, indexes, [DATASET, WEATHER_CLASS])
-
     txt = df_2_latex_str(pred[0], caption=f"{WEATHER_CLASS} prediction metrics",
                          command_name="WCPrediction", float_format="{:0.3f}".format)
 

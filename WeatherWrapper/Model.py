@@ -1,7 +1,7 @@
 from typing import Callable
 
 import pandas as pd
-from sktime.forecasting.base import BaseForecaster
+from baseForecaster.Model import Model as BaseForecaster
 import numpy as np
 
 from sktimeSEAPF import Optimized
@@ -14,30 +14,33 @@ from sktimeSEAPF.Modelv2 import Model as sktimeSEAPFv2
 from sktimeSEAPF.Modelv3 import Model as sktimeSEAPFv3
 
 class Model(BaseForecaster):
-    _tags = {
-        "requires-fh-in-fit": False
-    }
-
     def __init__(self,
                  latitude_degrees: float = 51,
                  longitude_degrees: float = 14,
                  x_bins: int = 10,
                  y_bins: int = 10,
                  k=3, # number of weather classes
-                 model_factory = Callable[[], BaseForecaster]
+                 model_factory = Callable[[], BaseForecaster],
+                 **kwargs
                  ):
         """
-        transformer: class that implements fit and transform methods according to the sklearn or the
-        name of available predefined transformers. Transformer change 2D observation into 2D array
-        [[0,1,2],
-         [3,4,5],  ->  [3, 3, 3]
-         [6,7,8],
-         [0,1,2]]
-        once the observation array is transformed it is then proceeded as Overlay in the Base model.
-
-
+        Model performs PV timeseries forecasting facilitating Local Weather Properties. Local Weather Properties are
+        calculated using CloudinessFeatures: OCI,VCI, ACI. Model can perform batch learning. It is done by checking
+        y data passed in fit.
+        :param latitude_degrees: PV latitude
+        :param longitude_degrees: PV longitude
+        :param x_bins: ACI model's x resolution
+        :param y_bins: ACI model's y resolution
+        :param k: number of ACI weather classes
+        :param model_factory: function factory. Creating forecaster instance. One instance of forecaster is created and
+                              fit for each ACI weather classes (K)
+        :param lazy_fit: batch learning enabler. pd.DateOffset decides how often models should be fitted. If lazy_fit is
+                         passed fit method checks condition: last_fitted_y + lazy_fit < y.index[-1]. Model is refitted
+                         only if condition is met (the model was fitted on the data older than lazy_fit). e.g.
+                         lazy_fit = pd.DateOffset(11), last_fitted_y=10/07/2024 then model is refitted if y.index[-1] >
+                         21/07/2024.
         """
-        super().__init__()
+        super().__init__(**kwargs)
         self.latitude_degrees = latitude_degrees
         self.longitude_degrees = longitude_degrees
         self.x_bins = x_bins
@@ -67,13 +70,18 @@ class Model(BaseForecaster):
             raise e
         return self.aci_ts_
 
-    def _fit(self, y, X=None, fh=None):
+    def batch_fit(self, y, X=None, fh=None):
         """
         Fit function that is similar to sklearn scheme X contains features while y contains corresponding correct values
         :param X: it should be 2D pandas series [[wclass],[wclass],[wclass],[wclass],...] containing whether classes
         :param y: it should be 1D pandas series [[y1],[y2],[y3],[y4],...] containing observations made
         :return: self
         """
+        #
+        # if not self._check_if_model_should_be_refitted(y):
+        #     return self
+
+        self.last_fitted_y_ = y.index[-1]
         self.oci_ = OCI(
             window_size=3,
             model_factory = lambda : sktimeSEAPFv2(
@@ -88,7 +96,7 @@ class Model(BaseForecaster):
                 bandwidth = 0.1
             ))
 
-        self.y_ = y
+
         self.oci_ = self.oci_.fit(y)
         self.vci_ = VCI().fit(y)
         aci = self.compute_weather_features(y)

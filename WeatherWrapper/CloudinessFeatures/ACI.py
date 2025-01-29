@@ -43,13 +43,20 @@ class ACI:
         # aci_daily_mean = self.calculate_daily_mean_aci(only_day=True)
         #if aci == 0 then class == 0
         #if aci == 180 then class == k
+
         qaci_daily_mean = (self.df["aci"]  / (180 / self.k)).astype(int)
+        qaci_daily_mean = np.where(qaci_daily_mean == self.k, self.k-1, qaci_daily_mean)
+        # self.df["aci"]  / (180 / self.k) -> <0, k>
+        # (1.99999).astype(int)  -> 1
+        # round(.999) -> 1
+        # round(0.49) ->0, round(0.51) -> 1
+
 
         if self.debug:
             self.calculate_roll_metrics(qaci_daily_mean)
 
         self.value_ = pd.Series(qaci_daily_mean, index=self.df.index)
-        return self.value_
+        return self.value_ # for each 5min sample qACI
 
     @property
     def elevation(self):

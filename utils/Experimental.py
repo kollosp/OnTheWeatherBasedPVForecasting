@@ -1,3 +1,5 @@
+import os.path
+
 import pandas as pd
 from typing import List, Callable, Iterable, Any, Tuple
 from sktime.forecasting.model_selection import SlidingWindowSplitter
@@ -20,7 +22,8 @@ class Metric:
         return self._name
 
 class Experimental:
-    def __init__(self):
+    def __init__(self, storage_file):
+        self._storage_file = storage_file
         self._predictions = None
         self._dataset = None
         self._ts, self._y = None, None
@@ -71,6 +74,34 @@ class Experimental:
         """
         for metric in metrics:
             self._metrics.append(Metric(metric[0], metric[1]))
+
+    def predict_or_load(self, **kwargs) -> tuple:
+        forecast_start_point = kwargs.get("learning_window_length") - 1
+        self._ts = self._dataset.index.astype('datetime64[s]')[forecast_start_point:]
+
+        if not self.storage_load():
+            return self.predict(**kwargs)
+
+
+        predictions = [[0] * forecast_start_point + self._predictions[str(m)].to_list() for m in self._models]
+        # print(predictions)
+
+        # create metrics dataframe
+        metrics_results = {}
+        for metric in self._metrics:
+            metrics_results[f"{metric}"] = []
+            for model, prediction in zip(self._models, predictions):
+                # print("+++++++++",prediction[forecast_start_point:], "+++++++++", self._dataset[forecast_start_point:])
+                result = metric(prediction[forecast_start_point:], self._dataset[forecast_start_point:])
+                metrics_results[f"{metric}"].append(result)
+
+        metrics_results["Models"] = [str(m) for m in self._models]
+        metrics_results = pd.DataFrame(metrics_results)
+        metrics_results.set_index("Models", inplace=True)
+        metrics_results.columns.rename("Metric", inplace=True)
+
+        self.metric_results = metrics_results
+        return  self._predictions, metrics_results, forecast_start_point
 
     def predict(self,
                 forecast_horizon = 288,
@@ -155,13 +186,12 @@ class Experimental:
         metrics_results = pd.DataFrame(metrics_results)
         metrics_results.set_index("Models", inplace=True)
 
+        metrics_results.columns.rename("Metric", inplace=True)
         # log = {str(model): f"l: {len(prediction)}, max:{max(prediction)}, min: {min(prediction)}" for model, prediction in zip(self._models, predictions)}
         # print(log)
         d = {str(model): prediction for model, prediction in zip(self._models, predictions)}
 
         d["data"] = self._dataset.values
-
-
 
         self._predictions = pd.DataFrame.from_dict(d)
         self._predictions.index = self._dataset.index
@@ -174,6 +204,7 @@ class Experimental:
 
         self._ts = self._dataset.index.astype('datetime64[s]')[forecast_start_point:]
         self.metric_results = metrics_results
+        self.storage()
         return self._predictions, metrics_results, forecast_start_point
 
     def statistics(self):
@@ -193,5 +224,25 @@ class Experimental:
         plotter = Plotter(x_axis=self._ts,
                           list_of_data_or_plotter_object=data_columns,
                           list_of_line_names=columns)
+
         return plotter.show()
 
+    def storage_load(self):
+        """
+        Function loads csv from selected storage_file directory if it is available. If data is
+        loaded correctly function returns True.
+        """
+        if self._storage_file is not None:
+            if os.path.exists(self._storage_file):
+                df = pd.read_csv(self._storage_file, low_memory=False)
+                # self.full_data = self.full_data[30:]
+                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df.index = df['timestamp']
+                df.drop(columns=["timestamp"], inplace=True)
+                self._predictions = df
+                return True
+        return False
+
+    def storage(self):
+        if self._storage_file is not None:
+            self._predictions.to_csv(self._storage_file)

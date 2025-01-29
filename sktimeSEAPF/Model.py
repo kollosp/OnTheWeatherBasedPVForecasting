@@ -37,7 +37,8 @@ class Model(BaseForecaster):
                  interpolation=False,
                  return_sequences = False,
                  str_representation_limit = -1,
-                 str_repr_enable_params=False
+                 str_repr_enable_params=False,
+
                  ):
 
         super().__init__()
@@ -98,7 +99,6 @@ class Model(BaseForecaster):
         self._fit_compute_statistics(y, X, fh)
         self.overlay_, self.y_adjustment_obs = self._fit_generate_overlay(y, X, fh)
         self._fit_y_adjustment(y, X, fh, self.y_adjustment_obs)
-
 
         if self.zeros_filter_modifier > 0:
             self.overlay_ = self.overlay_.apply_zeros_filter(modifier=self.zeros_filter_modifier)

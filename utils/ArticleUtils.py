@@ -45,6 +45,9 @@ def df_2_latex_str(df: pd.DataFrame, caption, command_name, float_format=None) -
     txt = txt.replace("\\begin{table}", "\\begin{table}\\centering\\small")
     return txt
 
+def concatenate_df(list_dfs:List[List[pd.DataFrame]]):
+    return pd.concat(list_dfs)
+
 def join_dataframes(list_dfs:List[List[pd.DataFrame]], indexes:List[str]=None, index_names=None) -> List[pd.DataFrame]:
     """
     Function joins similar dataframes (e.g. representing metrics obtained on several datasets) and creates MultiIndex

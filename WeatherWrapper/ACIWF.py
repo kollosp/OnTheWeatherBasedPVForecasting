@@ -1,3 +1,4 @@
+from math import floor
 from typing import Callable
 
 import pandas as pd
@@ -76,6 +77,7 @@ class Model(BaseForecaster):
                 # zeros_filter_modifier=0.06627492,
                 # density_filter_modifier=0.49751398,
                 zeros_filter_modifier = 0,
+                scale_y = 0.9,
                 y_adjustment=False,
                 density_filter_modifier = 0,
                 bandwidth = 0.2
@@ -119,8 +121,16 @@ class Model(BaseForecaster):
         aci = aci[elevation > 0] # take only day data
 
         if self.weather_aggregation_method == Model.WEATHER_MEAN:
-            decision = sum(aci) / len(aci)
-            aci_most_frequent = round(sum(aci) / len(aci))
+            if self.k > 1:
+                decision_region = (self.k-1) / self.k
+                decision = sum(aci) / len(aci)
+                aci_most_frequent = sum(aci) / len(aci) # qACI_d
+                aci_most_frequent = aci_most_frequent // decision_region
+                if aci_most_frequent == self.k:
+                    aci_most_frequent = self.k-1
+            else:
+                # what to do if class is only one?
+                aci_most_frequent = self.k-1
         elif self.weather_aggregation_method == Model.WEATHER_MOST_FREQUENT:
             counts = np.bincount(aci)
             aci_most_frequent = np.argmax(counts) # most frequent value

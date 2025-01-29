@@ -33,13 +33,15 @@ class Model(BaseForecaster):
         in_sample_fh = ForecastingHorizon(y.index, is_relative=False)
         self.expected_from_model_ = self.model_instance_.in_sample_predict(fh=in_sample_fh, X=y.to_frame())
         self.expected_from_model_ = window_moving_avg(self.expected_from_model_, window_size=self.window_size, roll=True)
-        sub = window_moving_avg(y, window_size=self.window_size, roll=True) - self.expected_from_model_
+        self.moving_avg_ = window_moving_avg(y, window_size=self.window_size, roll=True)
+        sub = self.moving_avg_ - self.expected_from_model_
         self.value_ = pd.Series(data=sub, index=y.index)
         return self.value_
 
     def _predict_description(self) -> pd.DataFrame:
         return pd.DataFrame({
             f"{str(self)}.expected_from_model": self.expected_from_model_,
+            f"{str(self)}.moving_avg": self.moving_avg_,
             f"{str(self)}": self.value_,
         }, index=self.value_.index)
 

@@ -31,6 +31,7 @@ class Model(basemodel):
                  interpolation=False,
                  return_sequences = False,
                  str_representation_limit = -1,
+                 scale_y:float | None = 1
                  ):
 
         super().__init__(
@@ -50,6 +51,7 @@ class Model(basemodel):
         self.model_name = "SEAPFv2"
 
         self.y_adjustment = y_adjustment
+        self.scale_y = scale_y
 
     def get_model_value(self, x, xfactor_a=1, xfactor_b=0, yfactor=1):
         """
@@ -144,7 +146,7 @@ class Model(basemodel):
             # "yFactor": 100 * y_scale_factor,
             # "xFactor" : 100 * day_len / Solar.longest_day(self.latitude_degrees), # time scale factor
             "day_progress": 100 * day_progress_factor,
-            "prediction": prediction,
+            "prediction": prediction * self.scale_y,
             "base_prediction": self.get_model_values(day_progress_factor)
         }, index=ts, dtype=float)
 

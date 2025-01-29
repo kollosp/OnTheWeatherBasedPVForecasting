@@ -34,24 +34,19 @@ class Model(BaseForecaster):
         return self.in_sample_predict(X,fh)
 
     def in_sample_predict(self, X, fh):
-        if X is None:
-            x = self.y_
-        else:
-            x = X.iloc[:, 0]
-
         with warnings.catch_warnings():
             warnings.simplefilter(action='ignore', category=UserWarning)
             prediction = np.zeros(len(fh))
             for i, timestamps in enumerate(fh):
                 lower_b = timestamps - self.x_time_delta_
                 upper_b = timestamps + self.x_time_delta_
-                _y = np.array([x[lower_b - pd.DateOffset(n):upper_b - pd.DateOffset(n)].mean() for n in range(1, self.N+1)])
+                _y = np.array([self.y_[lower_b - pd.DateOffset(n):upper_b - pd.DateOffset(n)].mean() for n in range(1, self.N+1)])
                 prediction[i] = _y.mean()
             prediction[np.isnan(prediction)] = 0
             return pd.Series(data=prediction, index=fh.to_pandas())
 
     def __str__(self):
-        return "NLastDays (" + str(self.get_params()) + ")"
+        return "RollingAverage(" + str(self.get_params()) + ")"
 
     def plot(self):
         pass
