@@ -4,6 +4,7 @@ from typing import List, Tuple
 import matplotlib.pyplot as plt
 from typing import Protocol
 
+import pandas as pd
 from matplotlib.colors import ListedColormap
 import matplotlib.dates as mdates
 
@@ -31,9 +32,31 @@ class PlotterObject:
         return len(self._data)
 
 class Plotter:
+
     """
     Class for interactive plotting. It alows to move over the data
     """
+    @staticmethod
+    def from_df(df: pd.Dataframe | List[pd.Dataframe]):
+        """
+        Factory function that creates plotter instance from dataframe o list of Datafreames.
+        :param df:
+        :return:
+        """
+        if isinstance(df, list):
+            # list passed. Compare indexes. Should be the same
+            if len(df) == 1:
+                df = df[0] # no more list
+            else:
+                columns = sum([d.columns.to_list() for d in df], [])
+                data = []
+                for d in df:
+                    data = data + sum ([d[col].to_numpy() for col in d.columns],[])
+        else:
+            columns = df.columns
+            data = [df[col].to_numpy() for col in columns]
+        return Plotter(df.index, data, list_of_line_names = columns)
+
     def __init__(self, x_axis:List | np.ndarray, list_of_data_or_plotter_object:List[np.ndarray | PlotterObject],
                  list_of_line_names: List[str] | None = None,
                  displayed_window_size:int = 1_000,
@@ -111,7 +134,9 @@ class Plotter:
         x = self.get_window(self._x_axis)
         for d in self._list_of_data:  # Iterate over all timeseries that is displayed in this object
             y = self.get_window(d) #  get window that should be displayed (a part of timeseries)
-            pl, = self._ax[0].plot(x, y)  # display the window
+            zz = self._ax[0].plot(x, y)  # display the window
+            # print("Plotter.show zz", zz, len(zz))
+            pl = zz[0] # plot returns array
             self._plots.append(pl)  # save plot object. It is necessary to update it
         if self._list_of_line_names is not None:
             print(self._plots, self._list_of_line_names )

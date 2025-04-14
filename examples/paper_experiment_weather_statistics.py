@@ -50,6 +50,15 @@ def plot_weather_classes_vs_energy_per_day(df, pv_instance, latitude_degrees, lo
     fig, ax = plt.subplots(2)
     # fig.suptitle(f"Weather classes and mean daily power by day for PV {pv_instance}")
 
+    dataset_statistics_df = pd.DataFrame(data = {
+        "Begin Date": [df.index[0].strftime("%m/%d/%Y")],
+        "End Date": [df.index[-1].strftime("%m/%d/%Y")],
+        "Days": [len(df) // 288],
+        "Max [kW]": [max(df["data"])],
+        "Lat.": [latitude_degrees],
+        "Long.": [longitude_degrees],
+    }, index=pd.Index([f"PV {pv_instance}"], name=f"{DATASET}"))
+
     df = compute_aci_aggregated_df(df)
 
     #correlation computation
@@ -57,14 +66,7 @@ def plot_weather_classes_vs_energy_per_day(df, pv_instance, latitude_degrees, lo
     correlation_df = pd.DataFrame(data = {"Statistic": [s], "p-value": [p]}, index=[f"PV {pv_instance}"])
     correlation_df.index.rename(f"{DATASET}", inplace=True)
     #dataset statistics
-    dataset_statistics_df = pd.DataFrame(data = {
-        "Begin Date": [df.index[0].strftime("%m/%d/%Y")],
-        "End Date": [df.index[-1].strftime("%m/%d/%Y")],
-        "Days": [len(df)],
-        "Max": [max(df["data"])],
-        "Lat.": [latitude_degrees],
-        "Long.": [longitude_degrees],
-    }, index=pd.Index([f"PV {pv_instance}"], name=f"{DATASET}"))
+
     _ax = ax[-1]
     _ax.tick_params(axis='x', labelrotation=30)
 
@@ -82,7 +84,7 @@ def plot_weather_classes_vs_energy_per_day(df, pv_instance, latitude_degrees, lo
         else:
             found.append(bar_labels[i])
 
-    colors = ['tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink']
+    colors = ['tab:green', 'tab:orange' , 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink']
     bar_color = [colors[int(k % len(colors))] for k in df["ACIWF.decision_final"]]
 
     # len(unique) => weather class
@@ -268,7 +270,7 @@ def draw_oci_vci_figure(df, pv_instance, y_label, START_DATE, END_DATE,  latitud
     # l, = _ax.plot(data.index, d, label=f"PV {pv_instance}")
     l, = _ax.plot(data.index,oci_value, label=f"OCI", color="gray")
     lines.append(l)
-    l, = _ax.plot(data.index,oci_._predict_description()["OCI.expected_from_model"], label=f"OCI.SEAPF", color="red")
+    l, = _ax.plot(data.index,oci_._predict_description()["OCI.expected_from_model"], label=f"OCI.ExpectedProdModel", color="red")
     lines.append(l)
 
     _ax = ax[1]
@@ -367,7 +369,7 @@ def main(pv_instances):
     txt += df_2_latex_str(stats_nexts, caption="Structure of \wc{} changes represented as percentages. Each row (\wc{} source) indicates the weather condition on a given day, while each column (\wc{} destination) shows the probability of transitioning to a different weather condition on the following day. The data suggests that weather conditions tend to persist, as the diagonal entries (where the source and destination \wc{} are the same) have the highest percentages. Exceptions, such as the high likelihood of transitioning from 'Good weather' to 'Fair weather' in PV 2, highlight some variations in weather patterns across installations.",
                          command_name="WeatherChangesStructure")
     txt += df_2_latex_str(stats_longest_uni,
-                         caption="Statistics of uninterrupted weather conditions \wc{} chain lengths across different photovoltaic installations (\ds{}). For each combination of \ds{} and \wc{}, the mean chain length is typically just a few days, indicating that the most common pattern\noter{a co z dominantą?} involves maintaining a consistent weather type for a short duration. Moreover, the maximum chain lengths, which exceed 10 days in several cases, suggest that extended periods of consistent weather patterns are possible, especially for 'Bad weather' conditions. The share percentage highlights how frequently each weather condition occurs.",
+                         caption="Statistics of uninterrupted weather conditions \wc{} chain lengths across different photovoltaic installations (\ds{}). For each combination of \ds{} and \wc{}, the mean chain length is typically just a few days, indicating that the most common pattern involves maintaining a consistent weather type for a short duration. Moreover, the maximum chain lengths, which exceed 10 days in several cases, suggest that extended periods of consistent weather patterns are possible, especially for 'Bad weather' conditions. The share percentage highlights how frequently each weather condition occurs.",
                          command_name="LongestUninterrupted")
     txt += df_2_latex_str(stats, caption="Power production statistics by weather conditions (\wc{}) for different photovoltaic installations (\ds{}). The data demonstrates a clear relationship between weather conditions and power production, with better weather conditions ('Good weather') resulting in higher mean and maximum power outputs. Conversely, 'Bad weather' conditions show significantly lower power production on average, though variability (as indicated by the standard deviation) is often higher. ",
                          command_name="PowerProductionStats")

@@ -8,7 +8,7 @@ from WeatherWrapper.ACIWF import Model as ACIWF
 import pandas as pd
 from matplotlib import pyplot as plt
 from utils.ArticleUtils import print_or_save_figures, df_2_latex_str, join_dataframes
-from paper_experimet_weather_statistics import compute_aci_aggregated_df, generate_or_load_aci
+from paper_experiment_weather_statistics import compute_aci_aggregated_df, generate_or_load_aci
 from RollingAverage.Model import Model as RollingAverage
 WEATHER_CLASS = "\wc{}"
 DATASET = "\ds{}"
@@ -106,7 +106,7 @@ def main(pv_instances):
 
 
     pred = join_dataframes(all_dfs, indexes, [DATASET, WEATHER_CLASS])
-    txt = df_2_latex_str(pred[0], caption=f"{WEATHER_CLASS} prediction metrics",
+    txt = df_2_latex_str(pred[0], caption=f"The table presents the accuracy of various forecasting methods for predicting quantized qACId across datasets (PV 0, PV 1, and PV 2). It demonstrates the effectiveness of alternative prediction strategies compared to the naive forecast baseline, effectively capturing both short-term fluctuations and longer-term trends. The results highlight that RollingAverage with a 3-day window consistently achieved the best or near-best performance across the datasets, confirming that a short-term smoothing approach effectively captures weather-driven variations in qACId.",
                          command_name="WCPrediction", float_format="{:0.3f}".format)
 
     with open("cm/paper_experiment_aci_forecaster.tex", "w") as f:

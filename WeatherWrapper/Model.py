@@ -80,7 +80,7 @@ class Model(BaseForecaster):
         #
         # if not self._check_if_model_should_be_refitted(y):
         #     return self
-
+        print("batch fit...")
         self.last_fitted_y_ = y.index[-1]
         self.oci_ = OCI(
             window_size=3,
@@ -142,9 +142,9 @@ class Model(BaseForecaster):
         d.rename(columns={c:f"{str(self)}.{c}" for c in d.columns}, inplace=True)
 
         model_dict = {
-            f"{str(self)}.X[0]": self.X_.iloc[:, 0],
+            # f"{str(self)}.x": self.y_,
             # f"{str(self)}": self.prediction_,
-            f"{str(self)}.wc": pd.Series(self.weather_classes_prediction_.values, index=self.X_.index),
+            # f"{str(self)}.wc": pd.Series(self.weather_classes_prediction_.values, index=self.y_.index),
             f"{str(self)}.elevation": self.elevation_
         }
 
@@ -157,11 +157,11 @@ class Model(BaseForecaster):
     def _predict(self, fh, X):
         self.fh_ = fh
         self.X_ = X
-        x = X.iloc[:,0]
+        x = self.y #X.iloc[:,0]
 
         aci = self.compute_weather_features(x)
         elevation = self.aci_.elevation
-        self.elevation_ = pd.Series(elevation, index=X.index)
+        self.elevation_ = pd.Series(elevation, index=self.y.index)
         self.elevation_[self.elevation_ < 0] = 0
         aci = aci[-288:] # take last day
         aci = aci[elevation > 0] # take only day data
@@ -173,7 +173,7 @@ class Model(BaseForecaster):
         self.weather_classes_prediction_ = pd.Series(aci_most_frequent, index=fh.to_pandas())
         self.predictions_ = [np.nan] * len(self.models_)
         for i, m in enumerate(self.models_):
-            self.predictions_[i] = m["_model"].predict(fh,X)
+            self.predictions_[i] = m["_model"].predict(fh)
 
         # self.predictions_[aci_mean] = self.models_["_model"].predict(fh,X)
 

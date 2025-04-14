@@ -1,5 +1,6 @@
 import os.path
 
+import numpy as np
 import pandas as pd
 from typing import List, Callable, Iterable, Any, Tuple
 from sktime.forecasting.model_selection import SlidingWindowSplitter
@@ -22,7 +23,7 @@ class Metric:
         return self._name
 
 class Experimental:
-    def __init__(self, storage_file):
+    def __init__(self, storage_file=None):
         self._storage_file = storage_file
         self._predictions = None
         self._dataset = None
@@ -79,8 +80,13 @@ class Experimental:
         forecast_start_point = kwargs.get("learning_window_length") - 1
         self._ts = self._dataset.index.astype('datetime64[s]')[forecast_start_point:]
 
+        print(f"Looking for storage: {self._storage_file}", end="")
         if not self.storage_load():
+            print(f" - Storage not found")
             return self.predict(**kwargs)
+        else:
+
+            print(f" - Storage found")
 
 
         predictions = [[0] * forecast_start_point + self._predictions[str(m)].to_list() for m in self._models]
@@ -91,8 +97,10 @@ class Experimental:
         for metric in self._metrics:
             metrics_results[f"{metric}"] = []
             for model, prediction in zip(self._models, predictions):
-                # print("+++++++++",prediction[forecast_start_point:], "+++++++++", self._dataset[forecast_start_point:])
-                result = metric(prediction[forecast_start_point:], self._dataset[forecast_start_point:])
+                y_pred = np.array(prediction[forecast_start_point:])
+                y_true = self._dataset[forecast_start_point:].to_numpy()
+                indx = ~np.isnan(y_pred) & ~np.isnan(y_true)
+                result = metric(y_pred[indx], y_true[indx])
                 metrics_results[f"{metric}"].append(result)
 
         metrics_results["Models"] = [str(m) for m in self._models]
@@ -138,12 +146,13 @@ class Experimental:
             st = self._dataset.index[test[0]]
             en = self._dataset.index[test[-1]]
             txt = f"\rBatch learning. Iter: {i} ~ {int(100 * i/splits)}%. Period: <{st}, {en}>"
-            print(txt)
+            print(txt, end ="")
 
-            # fit models once per batch
+            # fit models once per batch ????????????
             if i % batch == 0:
                 for model in self._models:
-                    model.fit(y=self._dataset[train][:-1])
+                    print("fitting...", self._dataset[train].index[[0,-1]], end="")
+                    model.fit(y=self._dataset[train][:-1], fh=self._dataset[test].index)
 
             # print("Train & Test", train, len(test), test[0], test[-1])
 
@@ -179,7 +188,10 @@ class Experimental:
         for metric in self._metrics:
             metrics_results[f"{metric}"] = []
             for model, prediction in zip(self._models, predictions):
-                result = metric(prediction[forecast_start_point:], self._dataset[forecast_start_point:])
+                y_pred = np.array(prediction[forecast_start_point:])
+                y_true = self._dataset[forecast_start_point:].to_numpy()
+                indx = ~np.isnan(y_pred) & ~np.isnan(y_true)
+                result = metric(y_pred[indx], y_true[indx])
                 metrics_results[f"{metric}"].append(result)
 
         metrics_results["Models"] = [str(m) for m in self._models]
