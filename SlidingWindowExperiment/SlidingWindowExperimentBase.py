@@ -4,7 +4,6 @@ if __name__ == "__main__": import __config__
 import pandas as pd
 import numpy as np
 
-
 from utils.Plotter import Plotter
 from utils.ExecutionTimer import ExecutionTimer
 
@@ -378,7 +377,7 @@ class SlidingWindowExperimentBase:
 
                 # print(f"prediction: {name} y.shape:",prediction_y.shape)
 
-            metrics_ts.iloc[i][f"{str(m)}:PT"] = pt.seconds_elapsed
+            metrics_ts.loc[i, f"{str(m)}:PT"] = pt.seconds_elapsed
             # in case of trajectory forecasting self.predict_gene(...)_dataset returns 2D array that shape[0] = 1 and
             # shape[1] = fh. It is for consistency (same shape as fitting). It requires flattening
             test_ds_y_np = test_ds_y_np.flatten()
