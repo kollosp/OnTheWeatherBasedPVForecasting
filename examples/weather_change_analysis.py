@@ -1,3 +1,4 @@
+#Refere to main to read script-related comments
 import matplotlib
 import pandas as pd
 import numpy as np
@@ -14,11 +15,6 @@ from fastdtw import fastdtw
 from tslearn.metrics import cdist_dtw
 from fastdtw import fastdtw
 from tqdm import tqdm
-
-os.chdir("/home/kszyc/projects/OnTheWeatherBasedPVForecasting/")
-# os.chdir("/home/kszyc/projects/OnTheWeatherBasedPVForecasting/")
-
-
 
 def compare_signals(csv_file, column, distance_name, distance_fn):
     df = pd.read_csv(csv_file, parse_dates=["timestamp"])
@@ -176,6 +172,9 @@ def plot_daily_signals(distance_name, data1, data2, date, distance):
 
 
 if __name__ == "__main__":
+    """
+    Script checks time relations for OCI and VCI features by distance calculation functions
+    """
     csv_file_path = "./datasets/weather_dataset_0.csv"
     distance_functions = [
         ("Simple DTW", simple_dtw),

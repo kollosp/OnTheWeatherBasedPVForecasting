@@ -373,6 +373,7 @@ def show_kde(df, x_column, y_column, hue_column, estimators = [
 
 
 if __name__ == "__main__":
+    """Script shows the ACI decision boundaries"""
     # csv_file_path = "./datasets/data_used_tu_generate_images.csv"
     csv_file_path = "./datasets/ex_sklearn.csv" # new dataset (different model to generate OCI)
     run_angle_cls(csv_file_path)
