@@ -107,7 +107,8 @@ def test(k=4, n=10, n_steps=28, instance=0):
     dimensions = len(dims)  # base dimensions
     
     available_models = [
-        ModelCNN
+        ModelMLP,
+        ModelLSTM
     ]
     
     for model_class in available_models:
