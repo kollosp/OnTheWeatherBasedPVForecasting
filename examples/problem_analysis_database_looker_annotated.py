@@ -8,7 +8,6 @@ from matplotlib import pyplot as plt
 from utils.Plotter import Plotter
 from utils import Solar
 
-from sktimeSEAPF.Optimized import Optimized
 
 def print_full(x):
     pd.set_option('display.max_rows', None)
@@ -35,22 +34,7 @@ if __name__ == "__main__":
 
     print(df)
     print(df.columns)
-    #
-    # # print_full(df[["0_Power"]].head(288))
-    # latitude_degrees = df["0_Latitude"][0]
-    # longitude_degrees = df["0_Longitude"][0]
-    # # print_full(df.index.astype('datetime64[s]'))
-    # timestamps = df.index.astype('datetime64[s]').astype('int')
-    #
-    # elevation = Solar.elevation(Optimized.from_timestamps(timestamps), latitude_degrees,
-    #                             longitude_degrees) * 180 / np.pi
-    # d = pd.DataFrame({
-    #     "power": df["0_Power"],
-    #     "elevation": elevation
-    # }, index = df.index)
-    # # print_full(df[["0_Power"]][288:].head(288))
-    # # print("First 288 rows")
-    #
+
     plotter = Plotter(df.index, [df[i] for i in ['Production', 'Elevation']], debug=False)
     plotter.show()
     plt.show()

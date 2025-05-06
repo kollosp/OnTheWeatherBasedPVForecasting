@@ -2,13 +2,10 @@ if __name__ == "__main__": import __config__
 import pandas as pd
 import numpy as np
 import os
-
+from dimensions import Elevation
 from matplotlib import pyplot as plt
 
 from utils.Plotter import Plotter
-from utils import Solar
-
-from sktimeSEAPF.Optimized import Optimized
 
 def print_full(x):
     pd.set_option('display.max_rows', None)
@@ -40,8 +37,7 @@ if __name__ == "__main__":
     # print_full(df.index.astype('datetime64[s]'))
     timestamps = df.index.astype('datetime64[s]').astype('int')
 
-    elevation = Solar.elevation(Optimized.from_timestamps(timestamps), latitude_degrees,
-                                longitude_degrees) * 180 / np.pi
+    elevation = Elevation(latitude_degrees,longitude_degrees).transform(df)
     d = pd.DataFrame({
         "power": df["0_Power"],
         "elevation": elevation
