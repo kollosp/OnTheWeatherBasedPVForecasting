@@ -32,7 +32,7 @@ To display and create files containing images and statistics used in article
 
 ACI forecasting experiment. Script displays charts and stores statistics in a file `cm/paper_experiment_aci_forecaster.tex`
 ```
-    (.venv):~/$python  examples/paper_experiment_weather_statistics.py
+    (.venv):~/$python  examples/paper_experiment_aci_forecasting.py
 ```
 
 Polinomial Regression, KNN and Random Forest experiment:
