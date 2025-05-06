@@ -37,7 +37,7 @@ ACI forecasting experiment. Script displays charts and stores statistics in a fi
 
 Polinomial Regression, KNN and Random Forest experiment:
 ```
-    (.venv):~/$python  examples/ecai_experiments/ecai_experiments/problem_analysis_classic_min.py
+    (.venv):~/$python  examples/ecai_experiments/problem_analysis_classic_min.py
 ```
 
 Deep learning experiments:

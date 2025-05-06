@@ -270,7 +270,7 @@ def draw_oci_vci_figure(df, pv_instance, y_label, START_DATE, END_DATE,  latitud
     # l, = _ax.plot(data.index, d, label=f"PV {pv_instance}")
     l, = _ax.plot(data.index,oci_value, label=f"OCI", color="gray")
     lines.append(l)
-    l, = _ax.plot(data.index,oci_._predict_description()["OCI.expected_from_model"], label=f"OCI", color="red")
+    l, = _ax.plot(data.index,oci_._predict_description()["OCI.expected_from_model"], label=f"Expected power", color="red")
     lines.append(l)
 
     _ax = ax[1]
