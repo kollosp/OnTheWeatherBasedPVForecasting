@@ -1,3 +1,4 @@
+import copy
 from typing import Tuple
 if __name__ == "__main__": import __config__
 
@@ -84,9 +85,9 @@ class SWE(SlidingWindowExperimentBase):
             MeanBySolarDay(dimension_name="ACId", base_dimensions=["ACI"],
                 latitude_degrees=latitude_degrees,
                 longitude_degrees=longitude_degrees),
-            Quantization(k=4, dimension_name=f"qACId(4)", base_dimensions=["ACId"]),
+            Quantization(k=8, dimension_name=f"qACId(8)", base_dimensions=["ACId"]),
             Quantization(k=6, dimension_name=f"qACId(6)", base_dimensions=["ACId"]),
-            Quantization(k=1, dimension_name=f"qACId(1)", base_dimensions=["ACId"]),
+            Quantization(k=4, dimension_name=f"qACId(4)", base_dimensions=["ACId"]),
             # MeanBySolarDay(dimension_name="OCId", base_dimensions=["OCI"],
             #     latitude_degrees=latitude_degrees,
             #     longitude_degrees=longitude_degrees),
@@ -142,14 +143,14 @@ class create_lstm_keras_model:
     def __str__(self):
         return "__LSTM__"
 
-def test(model, model_name="model", k=4, n = 10, n_steps = 28,instance=0):
+def test(model, model_name="model", k=4, n = 10, n_steps = 28,instance=0, excluded_dims=None):
     file_path = "/".join(os.path.abspath(__file__).split("/")[:-2] + ["../datasets/dataset.csv"])
     dataset = pd.read_csv(file_path, low_memory=False)
     # self.full_data = self.full_data[30:]
     dataset['timestamp'] = pd.to_datetime(dataset['timestamp'])
     dataset.index = dataset['timestamp']
     dataset.drop(columns=["timestamp"], inplace=True)
-    dataset = dataset[:2*360*288].loc["2020-04-18":] # one year for train one year for test
+    dataset = dataset[:2*360*288].loc["2020-04-18":]
 
     print(dataset.columns)
 
@@ -159,7 +160,7 @@ def test(model, model_name="model", k=4, n = 10, n_steps = 28,instance=0):
 
     df = pd.DataFrame({}, index=dataset.index)
     df["power"] = dataset[f"{instance}_Power"]
-
+    df.fillna(0, inplace=True)
     swe = SWE(k=k, latitude_degrees=latitude_degrees, longitude_degrees=longitude_degrees)
     swe.register_dataset(df)
 
@@ -167,12 +168,13 @@ def test(model, model_name="model", k=4, n = 10, n_steps = 28,instance=0):
     # appears in metrics as index. If you leave dimensions name not provided model will use all dimensions available in
     # chain. You can easly configure fit or predict wrapping model in class that has predict and fit methods
     # swe.register_model(MLPRegressor(hidden_layer_sizes=(20, 20, 20), max_iter=500, random_state=0), "MLP", ["SolarDay%", "qACId"])
-
-    dims = [d for d in swe.all_dims if not d in ["OCIModel", "OCI", "VCI", "ACI", "ACId", "qACId(4)", "qACId(6)", "qACId(1)"]] # remove dims needed for calculations
+    excluded_dims = excluded_dims if excluded_dims is not None else []
+    dims = [d for d in swe.all_dims if not d in excluded_dims + ["OCIModel", "OCI", "VCI", "ACI", "ACId", "qACId(8)", "qACId(6)", "qACId(4)"]] # remove dims needed for calculations
     # swe.register_model(model,model_name, dims=dims, n=n, n_step=n_steps) # reference case
-    swe.register_model(model,model_name, dims=dims + [f"qACId(4)"], n=n, n_step=n_steps) # test case
-    swe.register_model(model,model_name, dims=dims + [f"qACId(6)"], n=n, n_step=n_steps) # test case
-    swe.register_model(model,model_name, dims=dims + [f"qACId(1)"], n=n, n_step=n_steps) # test case
+    swe.register_model(copy.deepcopy(model),model_name, dims=dims) # test case
+    swe.register_model(copy.deepcopy(model),model_name, dims=dims + [f"qACId(4)"]) # test case
+    swe.register_model(copy.deepcopy(model),model_name, dims=dims + [f"qACId(6)"]) # test case
+    swe.register_model(copy.deepcopy(model),model_name, dims=dims + [f"qACId(8)"]) # test case
     # swe.register_model(create_lstm_keras_model(hidded_layers=(20, 10), input_shape=(20, len(dims)), output_shape=1),"tf::LSTM(20,10)", dims, n=20, n_step=28)
 
     # select metrics for model evaluations
@@ -197,13 +199,27 @@ if __name__ == "__main__":
     n = 10
     n_steps = 10
     dimensions = 6 # y, Elevation, Day%, SolarDay%, Declination, qACId
-    metrics_df = test(
-        model = create_lstm_keras_model(hidded_layers=(10, 10), input_shape=(n, dimensions), output_shape=1),
-        model_name="LSTM",
-        n = n,
-        n_steps = n_steps,
-        k=4,
-        instance=0 # dataset contains data from 3 different pv power plants
-    )
 
-    print(metrics_df)
+    instances = [0,1,2]
+    models = [
+        (KNeighborsRegressor(10), "KNN(10)"),
+        (make_pipeline(PolynomialFeatures(12), LinearRegression()), "LR(12)"),
+        (RandomForestRegressor(), "RF")
+    ]
+
+    all_metrics = pd.DataFrame({})
+    for instance in instances:
+        for m in models:
+            metrics_df = test(
+                excluded_dims = ["y", "Day%", "Elevation", "Declination"], # solar day  + qacid
+                model = m[0],
+                model_name=m[1],
+                # n = n,
+                # n_steps = n_steps,
+                instance=instance # dataset contains data from 3 different pv power plants
+            )
+            metrics_df["instance"] = instance
+            all_metrics = pd.concat([all_metrics, metrics_df])
+            print(all_metrics)
+
+    print(all_metrics)
