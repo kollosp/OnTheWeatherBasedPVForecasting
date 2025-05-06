@@ -1,5 +1,5 @@
 # One-Day-Ahead Photovoltaic Power Prediction Based on
-Local Weather Properties Analysis
+
 Repository contains code and dataset supporting research "One-Day-Ahead Photovoltaic Power Prediction Based on
 Local Weather Properties Analysis" ECAI'2025
 
