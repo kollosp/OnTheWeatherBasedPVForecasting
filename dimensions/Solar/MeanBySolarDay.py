@@ -15,7 +15,7 @@ class MeanBySolarDay(BaseDimension):
         super(MeanBySolarDay, self).__init__(dimension_name=kwargs.pop("dimension_name", "MeanBySolarDay"), **kwargs)
 
     def _transform(self, y: pd.DataFrame | pd.Series, X: pd.DataFrame | pd.Series | None = None) -> pd.Series | pd.DataFrame:
-        ret = pd.Series(data=0, index=y.index)
+        ret = pd.Series(data=0.0, index=y.index)
         df = pd.DataFrame({}, index=y.index)
         df["day"] = df.index.floor('d')
         df["Elevation"] = elevation_df(df, self.latitude_degrees, self.longitude_degrees)

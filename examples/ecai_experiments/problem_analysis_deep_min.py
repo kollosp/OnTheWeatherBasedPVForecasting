@@ -12,7 +12,7 @@ from dimensions import OCIModel, SolarDayProgress, Quantization, MeanBySolarDay
 from dimensions import Declination
 
 from SlidingWindowExperiment import SlidingWindowExperimentBase
-from model_wrappers import *
+from ANN.model_wrappers import *
 
 import warnings
 warnings.filterwarnings('ignore')
