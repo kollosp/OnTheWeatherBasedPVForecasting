@@ -300,7 +300,6 @@ if __name__ == "__main__":
         # covered_dimensions={"y","SolarDay%", "Declination", "Elevation"},
         # excluded_dimensions=qacid
         dims = [
-            ["SolarDay%", "Elevation"],
             ["y", "SolarDay%", "Elevation", "qACId(4)", "qACId(6)", "qACId(8)"],
             ["y", "SolarDay%", "Elevation", "qACId(4)"],
             ["y", "qACId(4)"],
@@ -317,6 +316,7 @@ if __name__ == "__main__":
             ["qACId(6)"],
             ["SolarDay%", "Elevation", "qACId(8)"],
             ["qACId(8)"],
+            ["SolarDay%", "Elevation"],
         ]
     )
 
