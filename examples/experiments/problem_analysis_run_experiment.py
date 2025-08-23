@@ -280,46 +280,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     parser.print_help()
 
-
-    # for qacid in [[], ["qACId(4)"], ["qACId(6)"], ["qACId(8)"]]:
-    main(
-        forecasting_horizons=[288], #24h
-        prediction_step_len=288, #it must be equal to the shortest forecasting horizon
-        models = [
-            (lambda *args: make_pipeline(PolynomialFeatures(12), LinearRegression()), "LR(12)"),
-            (lambda *args: KNeighborsRegressor(10), "KNN(10)"),
-            (lambda *args: make_pipeline(PolynomialFeatures(16), LinearRegression()), "LR(16)"),
-            (lambda *args: RandomForestRegressor(), "RF")
-        ],
-        instance_values = [
-            0, 1, 2
-        ],
-        n_values = [
-            None #1  #, 56, 84
-        ], n_steps_values = [None],
-        # covered_dimensions={"y","SolarDay%", "Declination", "Elevation"},
-        # excluded_dimensions=qacid
-        dims = [
-            ["y", "SolarDay%", "Elevation", "qACId(4)", "qACId(6)", "qACId(8)"],
-            ["y", "SolarDay%", "Elevation", "qACId(4)"],
-            ["y", "qACId(4)"],
-            ["y", "SolarDay%", "Elevation", "qACId(6)"],
-            ["y", "qACId(6)"],
-            ["y", "SolarDay%", "Elevation", "qACId(8)"],
-            ["y", "qACId(8)"],
-            ["y", "SolarDay%", "Elevation"],
-            ["y"],
-            ["y", "qACId(4)", "qACId(6)", "qACId(8)"],
-            ["SolarDay%", "Elevation", "qACId(4)"],
-            ["qACId(4)"],
-            ["SolarDay%", "Elevation", "qACId(6)"],
-            ["qACId(6)"],
-            ["SolarDay%", "Elevation", "qACId(8)"],
-            ["qACId(8)"],
-            ["SolarDay%", "Elevation"],
-        ]
-    )
-
     main(
         forecasting_horizons=[288],  # 24h
         prediction_step_len=288,  # it must be equal to the shortest forecasting horizon
@@ -343,6 +303,38 @@ if __name__ == "__main__":
             ["y", "SolarDay%", "Elevation", "qACId(8)"],
             ["y", "qACId(8)"],
             ["y", "SolarDay%", "Elevation"],
+            ["y"],
+            ["y", "qACId(4)", "qACId(6)", "qACId(8)"],
+            ["SolarDay%", "Elevation", "qACId(4)"],
+            ["qACId(4)"],
+            ["SolarDay%", "Elevation", "qACId(6)"],
+            ["qACId(6)"],
+            ["SolarDay%", "Elevation", "qACId(8)"],
+            ["qACId(8)"],
+            ["SolarDay%", "Elevation"],
+        ]
+    )
+
+    # for qacid in [[], ["qACId(4)"], ["qACId(6)"], ["qACId(8)"]]:
+    main(
+        forecasting_horizons=[288],  # 24h
+        prediction_step_len=288,  # it must be equal to the shortest forecasting horizon
+        models=[
+            (lambda *args: make_pipeline(PolynomialFeatures(12), LinearRegression()), "LR(12)"),
+            (lambda *args: KNeighborsRegressor(10), "KNN(10)"),
+            # (lambda *args: make_pipeline(PolynomialFeatures(16), LinearRegression()), "LR(16)"),
+            (lambda *args: RandomForestRegressor(), "RF")
+        ],
+        instance_values=[
+            0, 1, 2
+        ],
+        n_values=[
+            None  # 1  #, 56, 84
+        ], n_steps_values=[None],
+        # covered_dimensions={"y","SolarDay%", "Declination", "Elevation"},
+        # excluded_dimensions=qacid
+        dims=[
+
             ["y"],
             ["y", "qACId(4)", "qACId(6)", "qACId(8)"],
             ["SolarDay%", "Elevation", "qACId(4)"],
