@@ -25,13 +25,21 @@ class NamedObject:
 class SlidingWindowExperimentBase:
     def __init__(self, swe_model_prefix:str=None,**kwargs):
         """
-
         :param swe_model_prefix: prefix that is added to each model tested inside this particular SlidingWindowExperiment.
                                  during results comparition it allows to distuingish models. Model name is constructed as
                                  follows: {str(model)}{::swe_model_prefix if not none}[{d for d in dims}]
         :param kwargs:
+            learning_window_length (default: 360 * 288): amount of data used for learning. It is selected from all data and then splitted into cases
+                                                         each case contains (predict_window_length of data before current
+                                                         position and forecasting_horizon after current postion
+            forecasting_horizon (default: 1 * 288): number of samples to be predicted in advance
+            prediction_step_len (default forecasting_horizon): step in samples between adjusted predictions. By defualt
+                                 each prediction is made for forecasting_horizon samples ahead (no overlapping)
+            predict_window_length (default: 1 * 288): number of samples provided to model as features
+            train_pause (default: 360): number of forecasting_horizon iterations between model refitting.
         """
-        self._set_params(**kwargs)
+        self._kwargs = kwargs
+        self._set_params(**self._kwargs)
         self._models = []
         self.swe_model_prefix = swe_model_prefix
         self._models_name = []
@@ -63,6 +71,7 @@ class SlidingWindowExperimentBase:
         return self._y_all_dims
     def register_model(self, model, name:str="", dims: List[str]=None, n:int=None, n_step:int=1):
         """
+        Function registeres model and related informaction. Only registered models will be evaluated in __call__ execution
         :param model: sklearn-like model (fit, predict) functions
         :param name: name of the model. It will be used as keys in dictionaries
         :param dims: names of dimensions that model consumes during fitting and prediction
@@ -86,6 +95,11 @@ class SlidingWindowExperimentBase:
         dims_str = ""
         if dims is not None:
             dims_str = "[" + ",".join(dims) + "]"
+
+        if dims is not None and len(dims) == 0:
+            raise RuntimeError(
+                f"Model must have at least one dimension. Provided dims list is empty: {dims} ")
+
         if name == "":
             name = str(model)
 
@@ -104,6 +118,7 @@ class SlidingWindowExperimentBase:
 
     def register_metric(self, metric: Callable[[Iterable, Iterable], float], name: str) -> None:
         self._metrics.append(NamedObject(metric, name))
+
     def register_metrics(self, metrics: List):
         """
         Register multiple metrics
@@ -111,6 +126,7 @@ class SlidingWindowExperimentBase:
         """
         for metric in metrics:
             self._metrics.append(NamedObject(metric[0], metric[1]))
+
     def register_dataset(self, dataset: pd.DataFrame) -> None:
         """
         Function registers dataset to the model. It will be used to iterate over. Function does not distinguish
@@ -127,14 +143,14 @@ class SlidingWindowExperimentBase:
 
 
 
-    def _init_metrics_ts(self, splits):
+    def _init_metrics_ts(self, splits, index):
         """Function prepares metrics timeseries dataframe"""
         # metrics shape: columns = len(metrics)*len(models) rows: len(splits)
         return pd.DataFrame(
             {},
             index=[i for i in range(splits)],
             columns=
-                [str(model) + ":" + str(metric) for model in self.models for metric in self.metrics]
+                [str(model_name) + ":" + str(metric) for model, model_name in zip(self.models, self._models_name) for metric in self.metrics]
                 #[str(model) + ":" + str(metric) for model in self.models for metric in ["FT", "PT"]] #Fit time, Predict time
         )
     def _init_metrics_df(self):
@@ -169,10 +185,28 @@ class SlidingWindowExperimentBase:
         return test_ds_y, test_ds_x
 
     def _set_params(self, *args, **kwargs):
-        self.learning_window_length_ = kwargs.get("learning_window_length", 360 * 288)
-        self.forecasting_horizon_ = kwargs.get("forecasting_horizon", 1 * 288)
-        self.predict_window_length_ = kwargs.get("predict_window_length", 1 * 288)
-        self.train_pause_ = kwargs.get("train_pause", 360)
+        print("SlidingWindowExperimentBase._set_params: ", args, kwargs)
+
+        self.learning_window_length_ = kwargs.get(
+            "learning_window_length",
+            getattr(self, 'learning_window_length_',  360 * 288)
+        )
+        self.forecasting_horizon_ = kwargs.get(
+            "forecasting_horizon",
+            getattr(self, 'forecasting_horizon_', 1 * 288)
+        )
+        self.prediction_step_len_ = kwargs.get(
+            "prediction_step_len",
+            getattr(self, 'prediction_step_len_', self.forecasting_horizon_)
+        )
+        self.predict_window_length_ = kwargs.get(
+            "predict_window_length",
+            getattr(self, 'predict_window_length_', 1 * 288)
+        )
+        self.train_pause_ = kwargs.get(
+            "train_pause",
+            getattr(self, 'train_pause_', 360*288/self.prediction_step_len_) # one year
+        )
 
     def _init_fh(self):
         fh = np.arange(self.forecasting_horizon_) + 1
@@ -181,7 +215,7 @@ class SlidingWindowExperimentBase:
     def _init_splitter(self):
         fh = self._init_fh()
         ts_cv = SlidingWindowSplitter(window_length=self.learning_window_length_, fh=fh,
-                                      step_length=self.forecasting_horizon_)
+                                      step_length=self.prediction_step_len_)
         return ts_cv
 
     def fit_shape_dimensions(self, *args, **kwargs):
@@ -220,6 +254,7 @@ class SlidingWindowExperimentBase:
         np.set_printoptions(threshold=10)
         print(f"{self.__class__.__name__}.summary:\n"
               f" - forecasting_horizon: {self.forecasting_horizon_} = {self._init_fh()}\n"
+              f" - prediction_step_len: {self.prediction_step_len_}\n"
               f" - learning_window_length: {self.learning_window_length_ }\n"
               f" - predict_window_length: {self.predict_window_length_}\n"
               f" - train_pause: {self.train_pause_}\n"
@@ -316,7 +351,7 @@ class SlidingWindowExperimentBase:
             prediction[np.isnan(prediction)] = 0
             val = metric(ground_truth, prediction)
             if val is not None:  # checks if metric.call is proper function. It is only if returns list of values
-                metrics_ts.iloc[i, model_indx * len(self.metrics) + metric_indx] = val
+                metrics_ts.iloc[i, model_indx * len(self.metrics) + metric_indx] = val #index not a column name
 
     def call_fit(self, train_ds_y:pd.Series, train_ds_x:pd.DataFrame, metrics_ts:pd.DataFrame, i:int)->None:
         """
@@ -341,7 +376,7 @@ class SlidingWindowExperimentBase:
                 m.fit(train_ds_x_np, train_ds_y_np)
 
             print(f"done in {ft.seconds_elapsed}s")
-            metrics_ts.iloc[i][f"{str(m)}:FT"] = ft.seconds_elapsed
+            metrics_ts.iloc[i][f"{name}:FT"] = ft.seconds_elapsed
 
     def call_predict(self, test_ds_y, test_ds_x, metrics_ts:pd.DataFrame, prediction_ts:pd.DataFrame, prediction_features_ts:pd.DataFrame, i:int, test:np.array)->None:
         """
@@ -377,7 +412,7 @@ class SlidingWindowExperimentBase:
 
                 # print(f"prediction: {name} y.shape:",prediction_y.shape)
 
-            metrics_ts.loc[i, f"{str(m)}:PT"] = pt.seconds_elapsed
+            metrics_ts.loc[i, f"{name}:PT"] = pt.seconds_elapsed
             # in case of trajectory forecasting self.predict_gene(...)_dataset returns 2D array that shape[0] = 1 and
             # shape[1] = fh. It is for consistency (same shape as fitting). It requires flattening
             test_ds_y_np = test_ds_y_np.flatten()
@@ -405,7 +440,7 @@ class SlidingWindowExperimentBase:
 
         ts_cv = self._init_splitter()
         test_cases = ts_cv.get_n_splits(ts)
-        metrics_ts = self._init_metrics_ts(test_cases)
+        metrics_ts = self._init_metrics_ts(test_cases, ts.index)
 
         # self.summary()
         execution = ExecutionTimer()
@@ -415,7 +450,7 @@ class SlidingWindowExperimentBase:
                 train_ts = ts.iloc[train]
                 test_ts = ts.iloc[test]
 
-                print(f"it {i}. Td: {execution.seconds_delta}s, Tt: {execution.seconds}. {train[[0, -1]]}, x: {train_ts.shape}, y: {test_ts.shape}")
+                print(f"it {i}. DeltaTime: {execution.seconds_delta:.4f}s, TotalTime: {execution.seconds:.2f}. {train[[0, -1]]}, x: {train_ts.shape}, y: {test_ts.shape}")
 
                 # train once per train_pause iterations
                 if i % self.train_pause_ == 0:
@@ -436,15 +471,27 @@ class SlidingWindowExperimentBase:
                     prediction_features_ts=prediction_features_ts,
                     i=i,
                     test=test)
+        print("Loop ended.")
+
         # sum up
         self.metrics_df_ = self._init_metrics_df()
         for model_indx, model in enumerate(self.models):
             for metric_indx, metric in enumerate(self.metrics):
                 self.metrics_df_.loc[self._models_name[model_indx], (str(metric), "Mean")] = np.nanmean(metrics_ts.iloc[:, model_indx*len(self.metrics) + metric_indx])
                 self.metrics_df_.loc[self._models_name[model_indx], (str(metric), "Std")] = np.nanstd(metrics_ts.iloc[:, model_indx*len(self.metrics) + metric_indx])
+                self.metrics_df_.loc[self._models_name[model_indx], (str(metric), "Samples")] = len(metrics_ts.iloc[:, model_indx*len(self.metrics) + metric_indx])
 
         # prediction_features_ts.drop(columns="y", inplace=True)
-        self.output_ts_ = pd.concat([ts[train_ts.columns[0]], prediction_ts, prediction_features_ts], axis=1)
+        mi = metrics_ts.index.to_numpy()
+        pi = prediction_ts.index[self.learning_window_length_:].to_numpy()
+        metrics_ts.set_index(pd.Index(pi[mi*self.prediction_step_len_]), inplace=True)
+        self.output_ts_ = pd.concat([ts[train_ts.columns[0]], prediction_ts, prediction_features_ts, metrics_ts], axis=1)
+        print(self.output_ts_)
+        # for c in metrics_ts.columns:
+        #     print(metrics_ts[c])
+            # self.output_ts_[metrics_ts.index, c] = metrics_ts[c]
+
+        # self.output_ts_ = pd.concat([prediction_ts, prediction_features_ts, metrics_ts], axis=1)
         return self.output_ts_, self.metrics_df_, self.learning_window_length_
 
     def show_fit_dimensions(self, dimensions:List[str] = None):
