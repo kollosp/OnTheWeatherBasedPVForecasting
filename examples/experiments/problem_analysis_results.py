@@ -14,6 +14,7 @@ def main(directories, output):
     print(sa.concat_df)
     all_together = sa.get_report_ir_ttest_metric_df_v2()
     all_together.to_csv(output, sep=",", decimal='.', index=True)
+    sa.concat_df.to_csv(output.replace(".csv", "_concat.csv"), sep=",", decimal='.', index=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

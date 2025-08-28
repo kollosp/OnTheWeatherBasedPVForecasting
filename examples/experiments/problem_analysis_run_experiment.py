@@ -292,26 +292,39 @@ if __name__ == "__main__":
             0, 1, 2
         ],
         n_values = [
-            10, 30
-        ], n_steps_values = [28],
+            10, 28, 56, 84
+        ], n_steps_values = [10],
         dims = [
-            ["y", "SolarDay%", "Elevation", "qACId(4)", "qACId(6)", "qACId(8)"],
+            # for plain models
+            # ["y", "SolarDay%", "Elevation"],
+            # ["y", "SolarDay%"],
+            # ["y", "Elevation"],
+            # ["SolarDay%", "Elevation"],
+            # ["SolarDay%"],
+            # ["Elevation"],
+            # ["y"],
             ["y", "SolarDay%", "Elevation", "qACId(4)"],
+            ["y", "SolarDay%", "qACId(4)"],
+            ["y", "Elevation", "qACId(4)"],
+            ["SolarDay%", "Elevation", "qACId(4)"],
+            ["SolarDay%", "qACId(4)"],
+            ["Elevation", "qACId(4)"],
             ["y", "qACId(4)"],
             ["y", "SolarDay%", "Elevation", "qACId(6)"],
+            ["y", "SolarDay%", "qACId(6)"],
+            ["y", "Elevation", "qACId(6)"],
+            ["SolarDay%", "Elevation", "qACId(6)"],
+            ["SolarDay%", "qACId(6)"],
+            ["Elevation", "qACId(6)"],
             ["y", "qACId(6)"],
             ["y", "SolarDay%", "Elevation", "qACId(8)"],
-            ["y", "qACId(8)"],
-            ["y", "SolarDay%", "Elevation"],
-            ["y"],
-            ["y", "qACId(4)", "qACId(6)", "qACId(8)"],
-            ["SolarDay%", "Elevation", "qACId(4)"],
-            ["qACId(4)"],
-            ["SolarDay%", "Elevation", "qACId(6)"],
-            ["qACId(6)"],
+            ["y", "SolarDay%", "qACId(8)"],
+            ["y", "Elevation", "qACId(8)"],
             ["SolarDay%", "Elevation", "qACId(8)"],
-            ["qACId(8)"],
-            ["SolarDay%", "Elevation"],
+            ["SolarDay%", "qACId(8)"],
+            ["Elevation", "qACId(8)"],
+            ["y", "qACId(8)"],
+
         ]
     )
 
@@ -334,16 +347,35 @@ if __name__ == "__main__":
         # covered_dimensions={"y","SolarDay%", "Declination", "Elevation"},
         # excluded_dimensions=qacid
         dims=[
-
-            ["y"],
-            ["y", "qACId(4)", "qACId(6)", "qACId(8)"],
+            # for plain models
+            # ["y", "SolarDay%", "Elevation"],
+            # ["y", "SolarDay%"],
+            # ["y", "Elevation"],
+            # ["SolarDay%", "Elevation"],
+            # ["SolarDay%"],
+            # ["Elevation"],
+            # ["y"],
+            ["y", "SolarDay%", "Elevation", "qACId(4)"],
+            ["y", "SolarDay%", "qACId(4)"],
+            ["y", "Elevation", "qACId(4)"],
             ["SolarDay%", "Elevation", "qACId(4)"],
-            ["qACId(4)"],
+            ["SolarDay%", "qACId(4)"],
+            ["Elevation", "qACId(4)"],
+            ["y", "qACId(4)"],
+            ["y", "SolarDay%", "Elevation", "qACId(6)"],
+            ["y", "SolarDay%", "qACId(6)"],
+            ["y", "Elevation", "qACId(6)"],
             ["SolarDay%", "Elevation", "qACId(6)"],
-            ["qACId(6)"],
+            ["SolarDay%", "qACId(6)"],
+            ["Elevation", "qACId(6)"],
+            ["y", "qACId(6)"],
+            ["y", "SolarDay%", "Elevation", "qACId(8)"],
+            ["y", "SolarDay%", "qACId(8)"],
+            ["y", "Elevation", "qACId(8)"],
             ["SolarDay%", "Elevation", "qACId(8)"],
-            ["qACId(8)"],
-            ["SolarDay%", "Elevation"],
+            ["SolarDay%", "qACId(8)"],
+            ["Elevation", "qACId(8)"],
+            ["y", "qACId(8)"],
         ]
     )
 

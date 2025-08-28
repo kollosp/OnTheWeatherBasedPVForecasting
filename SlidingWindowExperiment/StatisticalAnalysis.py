@@ -385,6 +385,8 @@ class StatisticalAnalysis:
     def process_df(self):
         
         self._concat_df.rename(columns={"Unnamed: 0": self.modelCnf}, inplace=True)
+        print("======= Concat =======")
+        print(self._concat_df)
         # self._concat_df[self._prediction_path_column] = self._concat_df[self._prediction_path_column].str.split("/").str[
         #     -1]
         self._concat_df[self._model_name_column] = self._concat_df[self.modelCnf].str.split("_").str[0]
