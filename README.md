@@ -1,8 +1,7 @@
 # One-Day-Ahead Photovoltaic Power Prediction Based on
 Local Weather Properties Analysis
 Repository contains code and dataset supporting research "One-Day-Ahead Photovoltaic Power Prediction Based on
-Local Weather Properties Analysis" ECAI'2025
-
+Local Weather Properties Analysis"
 ## Initialization
 At the very beginning the python venv must be initialized and packages listed in requirements.txt needs to be installed.
 
@@ -35,14 +34,14 @@ ACI forecasting experiment. Script displays charts and stores statistics in a fi
     (.venv):~/$python  examples/paper_experiment_weather_statistics.py
 ```
 
-Polinomial Regression, KNN and Random Forest experiment:
+Experiments:
 ```
-    (.venv):~/$python  examples/ecai_experiments/problem_analysis_classic_min.py
+    (.venv):~/$python  examples/experiments/problem_analysis_run_experiment.py
 ```
+Reference experiments
+```
+    (.venv):~/$python  examples/experiments/problem_analysis_run_experiment_ref.py
+```
+For more information about used ANN architectures refer to `ANN/model_wrappers.py`.
 
-Deep learning experiments:
-```
-    (.venv):~/$python  examples/ecai_experiments/problem_analysis_deep_min.py
-```
-For more information about used ANN architectures refer to `examples/ecai_experiments/model_wrappers.py`.
-
+The scripts will generate raw experiments output in `cm` directory. Those results were then subjected to analysis 
