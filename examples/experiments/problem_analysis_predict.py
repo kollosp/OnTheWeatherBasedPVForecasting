@@ -68,14 +68,14 @@ if __name__ == "__main__":
         # (lambda *args: make_pipeline(PolynomialFeatures(12), LinearRegression()), "LR(12)", None, None, ["SolarDay%", "qACId(4)"]),
         # (lambda *args: make_pipeline(PolynomialFeatures(12), LinearRegression()), "LR(12)", None, None, ["SolarDay%"]),
         # (lambda n, dims,: ModelCNN(input_shape=(n, dims), output_shape=1), "CNN", 10, 28, []),
-        # (lambda n, dims,: ModelLSTM(input_shape=(n, dims), output_shape=1), "LSTM", 10, 28, ["qACId(4)", "SolarDay%"]),
+        (lambda n, dims,: ModelLSTM(input_shape=(n, dims), output_shape=1), "LSTM", 10, 28, ["qACId(4)", "SolarDay%"]),
         # (lambda n, dims,: ModelLSTM(input_shape=(n, dims), output_shape=1), "LSTM", 10, 28, ["SolarDay%"]),
         # (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["Declination", "Elevation", "y"]),
-        (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["SolarDay%", "qACId(8)"]),
-        (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["SolarDay%", "qACId(6)"]),
-        (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["SolarDay%", "qACId(4)"]),
-        (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["SolarDay%"]),
-        (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["y"]),
+        # (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["SolarDay%", "qACId(8)"]),
+        # (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["SolarDay%", "qACId(6)"]),
+        # (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["SolarDay%", "qACId(4)"]),
+        # (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["SolarDay%"]),
+        # (lambda n, dims,: ModelMLP(input_shape=(n, dims), output_shape=1), "MLP", 10, 28, ["y"]),
 
     ]
     forecasting_horizon = 288

@@ -373,6 +373,7 @@ class SlidingWindowExperimentBase:
 
             ft = ExecutionTimer()
             with ft:  # measure execution time
+                print("train_ds_x_np", train_ds_x_np.shape, "train_ds_y_np", train_ds_y_np.shape)
                 m.fit(train_ds_x_np, train_ds_y_np)
 
             print(f"done in {ft.seconds_elapsed}s")

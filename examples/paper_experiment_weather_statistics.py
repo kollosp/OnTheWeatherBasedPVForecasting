@@ -54,6 +54,7 @@ def plot_weather_classes_vs_energy_per_day(df, pv_instance, latitude_degrees, lo
         "Begin Date": [df.index[0].strftime("%m/%d/%Y")],
         "End Date": [df.index[-1].strftime("%m/%d/%Y")],
         "Days": [len(df) // 288],
+        "Samples": [len(df)],
         "Max [kW]": [max(df["data"])],
         "Lat.": [latitude_degrees],
         "Long.": [longitude_degrees],

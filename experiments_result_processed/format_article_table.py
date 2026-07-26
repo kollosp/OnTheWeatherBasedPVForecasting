@@ -75,7 +75,7 @@ df.loc[:, "Metric"] = df.loc[:, "Metric"].replace({
 }, regex=True)
 metrics = np.unique(df["Metric"])
 df = df.set_index(['instance', 'ML_Model', 'Metric']).sort_index()
-df = df[['BestModel', 'BestModelMean', 'BestRefModel', 'BestRefModelMean', 'IR2']]
+df = df[['BestModel', 'BestModelMean', 'BestRefModel', 'BestRefModelMean', 'IR2', "AvgPTAndFT"]]
 
 
 print(clear_df(df).to_latex(float_format="{:0.2f}".format).replace("NaN", ""))
@@ -94,8 +94,11 @@ for metric in metrics:
     # print(f"metric: {metric}")
     l = df.loc[idx[:,:,metric], :].reset_index()
     t = pd.pivot_table(l, values="BestModelMean", index="instance", aggfunc="min")
-    merged = pd.merge(t, l[["BestModelMean", "BestModel"]], left_on="BestModelMean", right_on="BestModelMean")
+    merged = pd.merge(t, l[["BestModelMean", "BestModel", "AvgPTAndFT"]], left_on="BestModelMean", right_on="BestModelMean")
     merged.index = merged.index.set_names("instance")
+    merged.rename(columns={
+        "AvgPTAndFT": "PT/FT"
+    }, inplace=True)
     merged["Metric"] = metric
     best_models = pd.concat([best_models, merged])
 best_models = best_models.reset_index()
