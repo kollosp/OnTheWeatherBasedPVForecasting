@@ -1,5 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from brokenaxes import brokenaxes
+from matplotlib.gridspec import GridSpec
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 
 
@@ -74,16 +78,8 @@ def plot_weather_classes_vs_energy_per_day(df, pv_instance, latitude_degrees, lo
     _ax.bar(df.index, df["data"], label="Production by day")
     _ax.set_ylabel("Production [kWh]")
     _ax.set_xlabel("Time")
-    _ax.legend()
     unique = np.unique(df["ACIWF.decision_final"].values)
     bar_labels_clear = [ACICLASS_2_TEXT(k) for k in df["ACIWF.decision_final"]]
-    bar_labels = [ACICLASS_2_TEXT(k) for k in df["ACIWF.decision_final"]]
-    found = []
-    for i,k in enumerate(bar_labels):
-        if bar_labels[i] in found:
-            bar_labels[i] = "_" + bar_labels[i]
-        else:
-            found.append(bar_labels[i])
 
     colors = ['tab:green', 'tab:orange' , 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink']
     bar_color = [colors[int(k % len(colors))] for k in df["ACIWF.decision_final"]]
@@ -91,24 +87,29 @@ def plot_weather_classes_vs_energy_per_day(df, pv_instance, latitude_degrees, lo
     # len(unique) => weather class
     decision_region = (len(unique)-1) / len(unique)
     for i in range(1, len(unique)):
-        ax[0].plot(df.index, [i*decision_region] * len(df), "k--", label=("_" if i != 1 else "") + "Decision boundaries")
-        # ax[1].plot(df.index, [i*decision_region] * len(df), "k--")
+        ax[0].plot(df.index, [i*decision_region] * len(df), "k--")
 
     _ax = ax[0]
     _ax.set_xticklabels([])
     _ax.set_ylabel("qACI_d")
-    _ax.bar(df.index, df["ACIWF.decision"], label = bar_labels, color=bar_color)
-    #
+    _ax.bar(df.index, df["ACIWF.decision"], color=bar_color)
+    weather_handles = [
+        Patch(facecolor=colors[int(wc % len(colors))], label=ACICLASS_2_TEXT(wc))
+        for wc in unique
+    ]
+    _legend_above(
+        _ax,
+        handles=weather_handles + [
+            Line2D([0], [0], color="k", linestyle="--", label="Decision boundaries")
+        ],
+    )
+    _style_paper_axis(_ax)
 
-    # _ax = ax[1]
-    # _ax.set_xticklabels([])
-    # _ax.set_ylabel("qACI_d")
-    # for i, wc in enumerate(unique):
-    #     d = np.where(df["ACIWF.decision_final"] != wc, np.nan, df["ACIWF.decision"].values)
-    #     _ax.plot(df.index, d, label=ACICLASS_2_TEXT(wc), color=colors[i])
-    #     _ax.scatter(df.index, d, color=colors[i], marker=".")
-    #
-    _ax.legend()
+    _ax = ax[-1]
+    _legend_above(_ax)
+    _style_paper_axis(_ax)
+    fig.tight_layout()
+    fig.subplots_adjust(hspace=0.45)
     longest_uninterrupted = {}
     next_classes = {}
 
@@ -218,6 +219,94 @@ def generate_or_load_aci(pv_instance=0, persist_file="cm/paper_experiment_aci", 
     return pred, latitude_degrees, longitude_degrees
 
 
+def _style_paper_legend(leg, *, framealpha=0.5):
+    if leg is None:
+        return
+    frame = leg.get_frame()
+    frame.set_alpha(framealpha)
+    frame.set_edgecolor("0.75")
+    frame.set_linewidth(0.5)
+
+
+def _legend_handles_labels(ax):
+    if hasattr(ax, "axs"):
+        return ax.axs[0].get_legend_handles_labels()
+    return ax.get_legend_handles_labels()
+
+
+def _legend_above(ax, *, handles=None, labels=None, ncol=None, framealpha=0.5, **kwargs):
+    if handles is None:
+        handles, labels = _legend_handles_labels(ax)
+        pairs = [(h, l) for h, l in zip(handles, labels) if not l.startswith("_")]
+        if not pairs:
+            return None
+        handles, labels = zip(*pairs)
+        handles, labels = list(handles), list(labels)
+    elif labels is None:
+        labels = [h.get_label() for h in handles]
+    if not handles:
+        return None
+    ncol = ncol or len(handles)
+    leg = ax.legend(
+        handles,
+        labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.02),
+        ncol=ncol,
+        framealpha=framealpha,
+        borderaxespad=0,
+        **kwargs,
+    )
+    _style_paper_legend(leg, framealpha=framealpha)
+    return leg
+
+
+def _legend_above_figure(fig, handles, labels, *, ncol=None, framealpha=0.5, **kwargs):
+    if not handles:
+        return None
+    ncol = ncol or len(handles)
+    leg = fig.legend(
+        handles,
+        labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 0.98),
+        ncol=ncol,
+        framealpha=framealpha,
+        borderaxespad=0,
+        **kwargs,
+    )
+    _style_paper_legend(leg, framealpha=framealpha)
+    return leg
+
+
+def _style_paper_axis(ax, *, grid=True, legend_framealpha=0.5):
+    if grid:
+        # ax.set_axisbelow(True)
+        ax.grid()
+    _style_paper_legend(ax.get_legend(), framealpha=legend_framealpha)
+
+
+def _style_brokenaxes_panels(bax, *, grid=True):
+    if grid:
+        bax.grid()
+        # for inner_ax in bax.axs:
+        #     inner_ax.set_axisbelow(True)
+
+
+def _vci_broken_ylims(mx, mi):
+    vals = np.concatenate([np.asarray(mx), np.asarray(mi)])
+    vals = vals[np.isfinite(vals)]
+    y_min, y_max = float(vals.min()), float(vals.max())
+    segments = []
+    print(y_min)
+    if y_min < -5:
+        segments.append((int(y_min)-1, int(y_min)))
+    segments.append((-1, 1))
+    if y_max > 5:
+        segments.append((int(y_max), int(y_max)+1))
+    return tuple(segments)
+
+
 def generate_pv_prod_figure(df, latitude_degrees_list, longitude_degrees_list):
     file_path = "/".join(os.path.abspath(__file__).split("/")[:-2] + ["datasets/dataset.csv"])
     df = pd.read_csv(file_path, low_memory=False)
@@ -233,74 +322,89 @@ def generate_pv_prod_figure(df, latitude_degrees_list, longitude_degrees_list):
     END_DATE_BAD = '2020-05-01'
 
     f1 = draw_power_figure(df, pv_instances, "Power [kW]", START_DATE_GOOD, END_DATE_GOOD, START_DATE_BAD, END_DATE_BAD)
-    f2 = draw_oci_vci_figure(df, 0, "Power [kW]", START_DATE_GOOD, END_DATE_GOOD, latitude_degrees_list[0], longitude_degrees_list[0])
+    f2 = draw_oci_vci_figure(df, 0, "Power [kW]", START_DATE_GOOD, END_DATE_GOOD, latitude_degrees_list[0], longitude_degrees_list[0], break_vci_yaxis=True)
     f3 = draw_oci_vci_figure(df, 0, "Power [kW]", START_DATE_BAD, END_DATE_BAD, latitude_degrees_list[0], longitude_degrees_list[0])
 
     return [f1,f2,f3]
 
-def draw_oci_vci_figure(df, pv_instance, y_label, START_DATE, END_DATE,  latitude_degrees, longitude_degrees):
-    fig, ax = plt.subplots(2)
+def draw_oci_vci_figure(df, pv_instance, y_label, START_DATE, END_DATE, latitude_degrees, longitude_degrees, break_vci_yaxis=False):
+    if break_vci_yaxis:
+        fig = plt.figure()
+        gs = GridSpec(2, 1, figure=fig)
+        ax_oci = fig.add_subplot(gs[0])
+        ax = [ax_oci, None]
+    else:
+        fig, ax = plt.subplots(2)
+
     _ax = ax[0]
     lines = []
 
-    # for pv_instance in pv_instances:
     df = df[f"{pv_instance}_Power"]
     data = df[START_DATE:END_DATE]
 
     d = Optimized.window_moving_avg(data, window_size=3, roll=True)
     l, = _ax.plot(data.index, d, label=f"PV {pv_instance}")
     lines.append(l)
-    for _ax in ax:
-        _ax.plot(data.index, np.zeros(len(data)), label="_zeros", c="black")
+    _ax.plot(data.index, np.zeros(len(data)), label="_zeros", c="black")
 
     oci_ = OCI(
-    window_size=3,
-    model_factory=lambda: sktimeSEAPFv2(
-        latitude_degrees=latitude_degrees,
-        longitude_degrees=longitude_degrees,
-        x_bins=34, y_bins=34,
-        zeros_filter_modifier=0,
-        density_filter_modifier=0,
-        bandwidth=0.1
-    ))
+        window_size=3,
+        model_factory=lambda: sktimeSEAPFv2(
+            latitude_degrees=latitude_degrees,
+            longitude_degrees=longitude_degrees,
+            x_bins=34, y_bins=34,
+            zeros_filter_modifier=0,
+            density_filter_modifier=0,
+            bandwidth=0.1
+        ))
     oci_ = oci_.fit(df)
     oci_value = oci_.transform(data)
     vci_ = VCI(window_size=6).fit(df)
-    vci_value = vci_.transform(data)
-    _ax = ax[0]
-    # l, = _ax.plot(data.index, d, label=f"PV {pv_instance}")
-    l, = _ax.plot(data.index,oci_value, label=f"OCI", color="gray")
+    vci_.transform(data)
+    l, = _ax.plot(data.index, oci_value, label=f"OCI", color="gray")
     lines.append(l)
-    l, = _ax.plot(data.index,oci_._predict_description()["OCI.expected_from_model"], label=f"Expected power", color="red")
+    l, = _ax.plot(data.index, oci_._predict_description()["OCI.expected_from_model"], label=f"Expected power", color="red")
     lines.append(l)
 
-    _ax = ax[1]
-    _ax.set_ylabel("VCI")
-    # l, = _ax.plot(data.index,vci_value, label=f"VCI")
     vci_description = vci_._predict_description()
-
-    # Optimized.window_moving_avg(vci_description["VCI.mx"], window_size=12, roll=True)
     mx = Optimized.window_moving_avg(vci_description["VCI.mx"], window_size=3, roll=True)
-    l, = _ax.plot(data.index, mx, label=f"VCI.dx/dt.max", color="red")
-    lines.append(l)
     mi = Optimized.window_moving_avg(vci_description["VCI.mi"], window_size=3, roll=True)
-    l, = _ax.plot(data.index,mi, label=f"VCI.dx/dt.min", color="red")
-    lines.append(l)
-    l = _ax.fill_between(data.index, mi, mx, label=f"VCI", color="gray")
 
-    lines.append(l)
+    if break_vci_yaxis:
+        bax = brokenaxes(ylims=_vci_broken_ylims(mx, mi), subplot_spec=gs[1], hspace=0.25)
+        bax.plot(data.index, np.zeros(len(data)), label="_zeros", c="black")
+        bax.plot(data.index, mx, label=f"VCI.dx/dt.max", color="red")
+        bax.plot(data.index, mi, label=f"VCI.dx/dt.min", color="red")
+        bax.fill_between(data.index, mi, mx, label=f"VCI", color="gray")
+        bax.set_ylabel("VCI components")
+        bax.set_xlabel("Time")
+
+        _legend_above(bax)
+        _style_brokenaxes_panels(bax)
+        for inner_ax in bax.axs:
+            inner_ax.xaxis.set_major_formatter(md.DateFormatter('%H:%M'))
+    else:
+        _ax = ax[1]
+        _ax.plot(data.index, np.zeros(len(data)), label="_zeros", c="black")
+        l, = _ax.plot(data.index, mx, label=f"VCI.dx/dt.max", color="red")
+        lines.append(l)
+        l, = _ax.plot(data.index, mi, label=f"VCI.dx/dt.min", color="red")
+        lines.append(l)
+        l = _ax.fill_between(data.index, mi, mx, label=f"VCI", color="gray")
+        lines.append(l)
+        _ax.set_ylabel("VCI components")
+        _ax.set_xlabel("Time")
+        _legend_above(_ax)
+        _style_paper_axis(_ax)
+        _ax.xaxis.set_major_formatter(md.DateFormatter('%H:%M'))
+
     _ax = ax[0]
     _ax.set_ylabel("OCI components [kW]")
-    # _ax.legend(lines, [l.get_label() for l in lines])
-    _ax.legend()
-    _ax.xaxis.set_major_formatter(md.DateFormatter('%H:%M'))
-    _ax = ax[1]
-    _ax.legend()
-    # _ax.set_ylim(-5,5)
-    _ax.set_ylabel("VCI components")
-    _ax.set_xlabel("Time")
+    _legend_above(_ax)
+    _style_paper_axis(_ax)
     _ax.xaxis.set_major_formatter(md.DateFormatter('%H:%M'))
     fig.tight_layout()
+    fig.subplots_adjust(hspace=0.45)
     return fig
 
 
@@ -325,14 +429,17 @@ def draw_power_figure(df, pv_instances, y_label, START_DATE_GOOD, END_DATE_GOOD,
     _ax = ax[0]
     _ax.set_ylabel(y_label)
     _ax.xaxis.set_major_formatter(md.DateFormatter('%H:%M'))
+    _style_paper_axis(_ax)
 
     _ax = ax[1]
     _ax.set_ylabel(y_label)
     _ax.set_xlabel("Time")
     _ax.xaxis.set_major_formatter(md.DateFormatter('%H:%M'))
-    _ax.legend(lines, [l.get_label() for l in lines])
+    _style_paper_axis(_ax)
 
+    _legend_above(ax[0], handles=lines, labels=[l.get_label() for l in lines])
     fig.tight_layout()
+    fig.subplots_adjust(hspace=0.45)
     return fig
 
 def main(pv_instances):
@@ -384,4 +491,4 @@ def main(pv_instances):
 if __name__ == "__main__":
     pv_instances = [0,1,2]
     main(pv_instances)
-    plt.show()
+    # plt.show()
